@@ -22,7 +22,6 @@ const SLIDE_DURATION = 5000;
 export default function Home() {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(true);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -36,17 +35,8 @@ export default function Home() {
     setProgress(0);
   }, []);
 
-  const showSlide = useCallback(
-    (index: number) => {
-      if (!slides.length) return;
-      setCurrentIndex((index + slides.length) % slides.length);
-      resetTimer();
-    },
-    [slides.length, resetTimer],
-  );
-
   useEffect(() => {
-    if (!isPlaying || slides.length === 0 || isFormOpen) return;
+    if (slides.length === 0 || isFormOpen) return;
 
     const timer = window.setInterval(() => {
       const elapsed = Date.now() - startedAt.current;
@@ -61,7 +51,7 @@ export default function Home() {
     }, 40);
 
     return () => window.clearInterval(timer);
-  }, [isPlaying, slides.length, isFormOpen]);
+  }, [slides.length, isFormOpen]);
 
   useEffect(() => {
     resetTimer();
@@ -99,7 +89,6 @@ export default function Home() {
     setImage("");
     setFileName("");
     setIsFormOpen(false);
-    setIsPlaying(true);
     resetTimer();
   }
 
@@ -122,19 +111,12 @@ export default function Home() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <button
-          className="brand"
-          type="button"
-          onClick={() => {
-            if (slides.length) showSlide(0);
-          }}
-          aria-label="Go to first slide"
-        >
+        <div className="brand">
           <span className="brand-mark" aria-hidden="true">
             Q
           </span>
           <span>QR Slides</span>
-        </button>
+        </div>
 
         <div className="header-actions">
           {slides.length > 0 && (
@@ -174,36 +156,6 @@ export default function Home() {
               <p className="eyebrow">Scan & explore</p>
               <h1>{currentSlide.title}</h1>
               <p className="description">{currentSlide.description}</p>
-              <div className="controls">
-                <button
-                  className="round-button"
-                  type="button"
-                  onClick={() => showSlide(currentIndex - 1)}
-                  aria-label="Previous slide"
-                >
-                  ←
-                </button>
-                <button
-                  className="play-button"
-                  type="button"
-                  onClick={() => {
-                    setIsPlaying((playing) => !playing);
-                    resetTimer();
-                  }}
-                  aria-label={isPlaying ? "Pause slideshow" : "Play slideshow"}
-                >
-                  <span aria-hidden="true">{isPlaying ? "Ⅱ" : "▶"}</span>
-                  {isPlaying ? "Pause" : "Play"}
-                </button>
-                <button
-                  className="round-button"
-                  type="button"
-                  onClick={() => showSlide(currentIndex + 1)}
-                  aria-label="Next slide"
-                >
-                  →
-                </button>
-              </div>
             </div>
           </article>
         ) : (
@@ -233,7 +185,7 @@ export default function Home() {
 
       <footer className="timer" aria-label={`${secondsLeft} seconds remaining`}>
         <div
-          className={`timer-fill ${!isPlaying || isFormOpen ? "paused" : ""}`}
+          className={`timer-fill ${isFormOpen ? "paused" : ""}`}
           style={{ width: `${progress}%` }}
         />
       </footer>

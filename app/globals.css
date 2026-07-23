@@ -88,8 +88,7 @@ label:has(input:focus-visible) {
   font-size: 16px;
 }
 
-.header-actions,
-.controls {
+.header-actions {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -103,8 +102,7 @@ label:has(input:focus-visible) {
 }
 
 .add-button,
-.submit-button,
-.play-button {
+.submit-button {
   border: 0;
   cursor: pointer;
   display: inline-flex;
@@ -249,7 +247,6 @@ label:has(input:focus-visible) {
   white-space: pre-wrap;
 }
 
-.round-button,
 .close-button {
   border: 1px solid var(--line);
   background: transparent;
@@ -258,31 +255,8 @@ label:has(input:focus-visible) {
   place-items: center;
 }
 
-.round-button {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  font-size: 20px;
-}
-
-.round-button:hover,
 .close-button:hover {
   background: rgba(23, 37, 31, 0.05);
-}
-
-.play-button {
-  height: 44px;
-  min-width: 110px;
-  padding: 0 18px;
-  border-radius: 999px;
-  background: var(--green);
-  color: white;
-  font-size: 13px;
-}
-
-.play-button span {
-  color: var(--lime);
-  font-size: 12px;
 }
 
 .empty-state {
