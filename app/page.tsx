@@ -17,15 +17,21 @@ type Slide = {
   fileName: string;
 };
 
-const SLIDE_DURATION = 5000;
+const SLIDE_DURATION = 15000;
+const STORAGE_URL = "http://127.0.0.1:3001";
 
 export default function Home() {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isFormOpen, setIsFormOpen] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
+  const [imageIsNew, setImageIsNew] = useState(false);
   const [fileName, setFileName] = useState("");
   const [progress, setProgress] = useState(0);
   const startedAt = useRef(Date.now());
@@ -33,6 +39,29 @@ export default function Home() {
   const resetTimer = useCallback(() => {
     startedAt.current = Date.now();
     setProgress(0);
+  }, []);
+
+  useEffect(() => {
+    async function loadSlides() {
+      try {
+        const response = await fetch(`${STORAGE_URL}/slides`, {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Unable to read saved slides.");
+        const savedSlides = (await response.json()) as Slide[];
+        setSlides(savedSlides);
+        setIsFormOpen(savedSlides.length === 0);
+      } catch {
+        setSaveError(
+          "Local storage is not running. Restart the app with npm run dev.",
+        );
+        setIsFormOpen(true);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    void loadSlides();
   }, []);
 
   useEffect(() => {
@@ -57,6 +86,25 @@ export default function Home() {
     resetTimer();
   }, [slides.length, resetTimer]);
 
+  useEffect(() => {
+    if (slides.length === 0 || isFormOpen) return;
+
+    function handleArrowKeys(event: KeyboardEvent) {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+
+      event.preventDefault();
+      setCurrentIndex((index) =>
+        event.key === "ArrowRight"
+          ? (index + 1) % slides.length
+          : (index - 1 + slides.length) % slides.length,
+      );
+      resetTimer();
+    }
+
+    window.addEventListener("keydown", handleArrowKeys);
+    return () => window.removeEventListener("keydown", handleArrowKeys);
+  }, [slides.length, isFormOpen, resetTimer]);
+
   function handleImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -65,41 +113,109 @@ export default function Home() {
     reader.onload = () => {
       setImage(String(reader.result));
       setFileName(file.name);
+      setImageIsNew(true);
     };
     reader.readAsDataURL(file);
   }
 
-  function addSlide(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!image || !title.trim() || !description.trim()) return;
-
-    setSlides((items) => [
-      ...items,
-      {
-        id: crypto.randomUUID(),
-        title: title.trim(),
-        description: description.trim(),
-        image,
-        fileName,
-      },
-    ]);
-    setCurrentIndex(slides.length);
+  function resetEditor() {
+    setEditingId(null);
     setTitle("");
     setDescription("");
     setImage("");
+    setImageIsNew(false);
     setFileName("");
-    setIsFormOpen(false);
-    resetTimer();
+    setSaveError("");
   }
 
-  function deleteCurrentSlide() {
-    const current = slides[currentIndex];
-    if (!current) return;
-    const remaining = slides.filter((slide) => slide.id !== current.id);
-    setSlides(remaining);
-    setCurrentIndex((index) => Math.min(index, Math.max(remaining.length - 1, 0)));
-    setIsFormOpen(remaining.length === 0);
-    resetTimer();
+  function closeManager() {
+    resetEditor();
+    setIsFormOpen(false);
+  }
+
+  function beginEdit(slide: Slide) {
+    setEditingId(slide.id);
+    setTitle(slide.title);
+    setDescription(slide.description);
+    setImage(slide.image);
+    setImageIsNew(false);
+    setFileName(slide.fileName);
+    setSaveError("");
+  }
+
+  async function saveSlide(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!image || !title.trim() || !description.trim() || isSaving) return;
+
+    setIsSaving(true);
+    setSaveError("");
+    try {
+      const isEditing = editingId !== null;
+      const response = await fetch(
+        isEditing
+          ? `${STORAGE_URL}/slides/${encodeURIComponent(editingId)}`
+          : `${STORAGE_URL}/slides`,
+        {
+        method: isEditing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          ...(imageIsNew ? { image, fileName } : {}),
+        }),
+      });
+      const result = (await response.json()) as Slide & { error?: string };
+      if (!response.ok) throw new Error(result.error ?? "Unable to save slide.");
+
+      if (isEditing) {
+        const editedIndex = slides.findIndex((slide) => slide.id === editingId);
+        setSlides((items) =>
+          items.map((slide) => (slide.id === editingId ? result : slide)),
+        );
+        if (editedIndex !== -1) setCurrentIndex(editedIndex);
+      } else {
+        setSlides((items) => [...items, result]);
+        setCurrentIndex(slides.length);
+      }
+      resetEditor();
+      setIsFormOpen(false);
+      resetTimer();
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : "Unable to save slide.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function deleteSlide(id: string) {
+    const removedIndex = slides.findIndex((slide) => slide.id === id);
+    if (removedIndex === -1) return;
+
+    setSaveError("");
+    try {
+      const response = await fetch(
+        `${STORAGE_URL}/slides/${encodeURIComponent(id)}`,
+        { method: "DELETE" },
+      );
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(result.error ?? "Unable to remove slide.");
+
+      const remaining = slides.filter((slide) => slide.id !== id);
+      setSlides(remaining);
+      if (editingId === id) resetEditor();
+      setCurrentIndex((index) => {
+        if (remaining.length === 0) return 0;
+        if (index > removedIndex) return index - 1;
+        return Math.min(index, remaining.length - 1);
+      });
+      resetTimer();
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : "Unable to remove slide.",
+      );
+    }
   }
 
   const currentSlide = slides[currentIndex];
@@ -110,33 +226,8 @@ export default function Home() {
 
   return (
     <main className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            Q
-          </span>
-          <span>QR Slides</span>
-        </div>
-
-        <div className="header-actions">
-          {slides.length > 0 && (
-            <span className="slide-count" aria-live="polite">
-              {currentIndex + 1} / {slides.length}
-            </span>
-          )}
-          <button
-            className="add-button"
-            type="button"
-            onClick={() => setIsFormOpen(true)}
-          >
-            <span aria-hidden="true">＋</span>
-            Add slide
-          </button>
-        </div>
-      </header>
-
       <section className="stage" aria-live="polite">
-        {currentSlide ? (
+        {isLoading ? null : currentSlide ? (
           <article className="slide" key={currentSlide.id}>
             <div className="qr-panel">
               <div className="qr-frame">
@@ -146,14 +237,9 @@ export default function Home() {
                   alt={`QR code for ${currentSlide.title}`}
                 />
               </div>
-              <p className="scan-hint">
-                <span className="scan-dot" aria-hidden="true" />
-                Point your camera to scan
-              </p>
             </div>
 
             <div className="copy-panel">
-              <p className="eyebrow">Scan & explore</p>
               <h1>{currentSlide.title}</h1>
               <p className="description">{currentSlide.description}</p>
             </div>
@@ -169,18 +255,19 @@ export default function Home() {
             <h1>Add your first QR slide</h1>
             <p>
               Choose a QR image, add a title and description, and it will rotate
-              automatically every five seconds.
+              automatically every fifteen seconds.
             </p>
           </div>
         )}
       </section>
 
-      {slides.length > 0 && (
-        <div className="utility-actions">
-          <button type="button" onClick={deleteCurrentSlide}>
-            Remove current slide
-          </button>
-        </div>
+      {slides.length > 0 && !isFormOpen && (
+        <button
+          className="presentation-trigger"
+          type="button"
+          onClick={() => setIsFormOpen(true)}
+          aria-label="Open slide manager"
+        />
       )}
 
       <footer className="timer" aria-label={`${secondsLeft} seconds remaining`}>
@@ -200,14 +287,18 @@ export default function Home() {
           >
             <div className="form-heading">
               <div>
-                <p className="eyebrow">New slide</p>
-                <h2 id="form-title">Add a QR code</h2>
+                <p className="eyebrow">
+                  {editingId ? "Edit slide" : "New slide"}
+                </p>
+                <h2 id="form-title">
+                  {editingId ? "Update slide" : "Add a QR code"}
+                </h2>
               </div>
               {slides.length > 0 && (
                 <button
                   className="close-button"
                   type="button"
-                  onClick={() => setIsFormOpen(false)}
+                  onClick={closeManager}
                   aria-label="Close form"
                 >
                   ×
@@ -215,13 +306,18 @@ export default function Home() {
               )}
             </div>
 
-            <form onSubmit={addSlide}>
+            <form onSubmit={saveSlide}>
+              {saveError && (
+                <p className="save-error" role="alert">
+                  {saveError}
+                </p>
+              )}
               <label className="upload-field">
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/gif"
                   onChange={handleImage}
-                  required
+                  required={!editingId}
                 />
                 {image ? (
                   <img src={image} alt="Selected QR code preview" />
@@ -262,11 +358,66 @@ export default function Home() {
                 <small>{description.length} / 320</small>
               </label>
 
-              <button className="submit-button" type="submit">
-                Add to slideshow
+              <button
+                className="submit-button"
+                type="submit"
+                disabled={isSaving}
+              >
+                {isSaving
+                  ? "Saving…"
+                  : editingId
+                    ? "Save changes"
+                    : "Add to slideshow"}
                 <span aria-hidden="true">→</span>
               </button>
+              {editingId && (
+                <button
+                  className="cancel-edit-button"
+                  type="button"
+                  onClick={resetEditor}
+                >
+                  Cancel editing
+                </button>
+              )}
             </form>
+
+            {slides.length > 0 && (
+              <section className="slide-manager" aria-labelledby="slides-title">
+                <div className="manager-heading">
+                  <h3 id="slides-title">Slides</h3>
+                  <span>{slides.length}</span>
+                </div>
+                <div className="manager-list">
+                  {slides.map((slide, index) => (
+                    <div className="manager-slide" key={slide.id}>
+                      <img src={slide.image} alt="" />
+                      <div className="manager-slide-info">
+                        <strong>{slide.title}</strong>
+                        <small>Slide {index + 1}</small>
+                      </div>
+                      <div className="manager-actions">
+                        <button
+                          className="edit-action"
+                          type="button"
+                          onClick={() => beginEdit(slide)}
+                          aria-label={`Edit ${slide.title}`}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="remove-action"
+                          type="button"
+                          onClick={() => void deleteSlide(slide.id)}
+                          aria-label={`Remove ${slide.title}`}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </aside>
         </div>
       )}

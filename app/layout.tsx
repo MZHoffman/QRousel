@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
-const title = "QR Slides — Five-second QR presentations";
+const title = "QRousel — Fifteen-second QR presentations";
 const description =
-  "Create a clean QR code slideshow with titles, descriptions, and automatic five-second transitions.";
+  "Create a clean QR code slideshow with titles, descriptions, and automatic fifteen-second transitions.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();

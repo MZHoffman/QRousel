@@ -1,0 +1,44 @@
+[
+  {
+    "id": "b8686099-bfc4-4fd9-9058-43ad3f63e16a",
+    "title": "Our LinkedIn",
+    "description": "Follow us to stay in the loop",
+    "fileName": "www-linkedin-com-company-js-monthly-viewasmember-true.jpg",
+    "imageFile": "b8686099-bfc4-4fd9-9058-43ad3f63e16a.jpg"
+  },
+  {
+    "id": "86c9cf80-76e7-457f-bc8a-2b4c69ab1cce",
+    "title": "Q&A",
+    "description": "For todays talks",
+    "fileName": "app-sli-do-event-wkqyu6e1tfckrbtpmf5h6c.jpg",
+    "imageFile": "86c9cf80-76e7-457f-bc8a-2b4c69ab1cce.jpg"
+  },
+  {
+    "id": "babde068-49a4-408b-9017-2e6fa2c334f2",
+    "title": "Join Community",
+    "description": "Chat, Get updates on next meetup, view job postings",
+    "fileName": "chat-whatsapp-com-j35b7x1qcas09ayewn8tru.jpg",
+    "imageFile": "babde068-49a4-408b-9017-2e6fa2c334f2.jpg"
+  },
+  {
+    "id": "7f7e0a96-dc3c-48d0-a700-8c579fba3e7f",
+    "title": "CityJS Athens Discount",
+    "description": "Get 10% off CityJS Athens",
+    "fileName": "ti-to-cityjs-conference-cityjsathens26-discount-jsmonthly.jpg",
+    "imageFile": "7f7e0a96-dc3c-48d0-a700-8c579fba3e7f.jpg"
+  },
+  {
+    "id": "178b428a-5c76-4997-80e2-ab1bf4b4a1e3",
+    "title": "Our Sponsor",
+    "description": "Big thanks for CodeRabbit for sponsorship",
+    "fileName": "www-coderabbit-ai.jpg",
+    "imageFile": "178b428a-5c76-4997-80e2-ab1bf4b4a1e3.jpg"
+  },
+  {
+    "id": "6be72343-f805-4277-a5ac-8b2819082780",
+    "title": "Win CityJS London Tickets",
+    "description": "Win tickets for London\nGet Tickets for 99 pounds (Limited 30 tix)",
+    "fileName": "london-cityjsconf-org (1).jpg",
+    "imageFile": "6be72343-f805-4277-a5ac-8b2819082780.jpg"
+  }
+]
