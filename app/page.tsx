@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- User-supplied QR images and previews must preserve their original pixels. */
+
 import {
   ChangeEvent,
   FormEvent,
@@ -34,7 +36,7 @@ export default function Home() {
   const [imageIsNew, setImageIsNew] = useState(false);
   const [fileName, setFileName] = useState("");
   const [progress, setProgress] = useState(0);
-  const startedAt = useRef(Date.now());
+  const startedAt = useRef<number | null>(null);
 
   const resetTimer = useCallback(() => {
     startedAt.current = Date.now();
@@ -68,13 +70,15 @@ export default function Home() {
     if (slides.length === 0 || isFormOpen) return;
 
     const timer = window.setInterval(() => {
-      const elapsed = Date.now() - startedAt.current;
+      const now = Date.now();
+      if (startedAt.current === null) startedAt.current = now;
+      const elapsed = now - startedAt.current;
       const nextProgress = Math.min((elapsed / SLIDE_DURATION) * 100, 100);
       setProgress(nextProgress);
 
       if (elapsed >= SLIDE_DURATION) {
         setCurrentIndex((index) => (index + 1) % slides.length);
-        startedAt.current = Date.now();
+        startedAt.current = now;
         setProgress(0);
       }
     }, 40);
@@ -83,8 +87,8 @@ export default function Home() {
   }, [slides.length, isFormOpen]);
 
   useEffect(() => {
-    resetTimer();
-  }, [slides.length, resetTimer]);
+    startedAt.current = Date.now();
+  }, [slides.length]);
 
   useEffect(() => {
     if (slides.length === 0 || isFormOpen) return;
