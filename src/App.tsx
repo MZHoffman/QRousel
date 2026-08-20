@@ -1,5 +1,3 @@
-/* eslint-disable @next/next/no-img-element -- The transitional lint preset is removed with the old Next stack; QR uploads intentionally use native images. */
-
 import {
   ChangeEvent,
   FormEvent,
