@@ -1,6 +1,7 @@
-import { StrictMode } from "react";
+import { StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import SignInPage from "./auth/LazySignInPage";
 import "./styles.css";
 
 const root = document.getElementById("root");
@@ -11,6 +12,16 @@ if (root === null) {
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    {window.location.pathname === "/sign-in" ? (
+      <Suspense
+        fallback={
+          <main className="auth-shell" aria-label="Loading sign in" />
+        }
+      >
+        <SignInPage />
+      </Suspense>
+    ) : (
+      <App />
+    )}
   </StrictMode>,
 );

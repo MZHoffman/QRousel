@@ -18,6 +18,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["src", "lib", "tests", "vite.config.ts"],
+  "include": ["src", "lib", "netlify", "tests", "vite.config.ts"],
   "exclude": ["node_modules"]
 }
