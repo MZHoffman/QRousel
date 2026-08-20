@@ -3,8 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
-const mode = process.argv[2] === "start" ? "start" : "dev";
-const vinextPath = path.join(projectRoot, "node_modules", ".bin", "vinext");
+const mode = process.argv[2] === "start" ? "preview" : "dev";
+const vitePath = path.join(projectRoot, "node_modules", ".bin", "vite");
 
 const storage = spawn(process.execPath, ["local-data-server.mjs"], {
   cwd: projectRoot,
@@ -26,12 +26,9 @@ function stop(exitCode = 0) {
 storage.on("message", (message) => {
   if (message?.type !== "ready" || app) return;
 
-  app = spawn(vinextPath, [mode], {
+  app = spawn(vitePath, [mode, "--host", "127.0.0.1", "--port", "3000"], {
     cwd: projectRoot,
-    env: {
-      ...process.env,
-      WRANGLER_LOG_PATH: ".wrangler/wrangler.log",
-    },
+    env: process.env,
     stdio: "inherit",
   });
 

@@ -1,33 +1,13 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-
-  return worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
+async function readBuiltDocument() {
+  return readFile(new URL("../dist/index.html", import.meta.url), "utf8");
 }
 
-test("server-renders QRousel metadata", async () => {
-  const response = await render();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-
-  const html = await response.text();
+test("builds the QRousel document metadata", async () => {
+  const html = await readBuiltDocument();
   assert.match(
     html,
     /<title>QRousel — Fifteen-second QR presentations<\/title>/i,
@@ -39,16 +19,12 @@ test("server-renders QRousel metadata", async () => {
   assert.match(html, /<link(?=[^>]*\brel=["']icon["'])(?=[^>]*\bhref=["']\/favicon\.svg["'])[^>]*>/i);
 });
 
-test("server-renders the QRousel presentation shell", async () => {
-  const response = await render();
-  const html = await response.text();
+test("builds a Vite SPA entry", async () => {
+  const html = await readBuiltDocument();
 
-  assert.match(html, /<main class="app-shell">/i);
-  assert.match(html, /<section class="stage" aria-live="polite">/i);
-  assert.match(
-    html,
-    /<footer class="timer" aria-label="15 seconds remaining">/i,
-  );
+  assert.match(html, /<div id="root"><\/div>/i);
+  assert.match(html, /<script[^>]+type="module"[^>]+src="\/assets\/[^"']+\.js"/i);
+  assert.doesNotMatch(html, /__VINEXT_RSC/i);
   assert.doesNotMatch(
     html,
     /codex-preview|Building your site|Your site is taking shape|react-loading-skeleton/i,

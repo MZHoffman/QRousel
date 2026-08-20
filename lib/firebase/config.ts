@@ -1,10 +1,10 @@
 import type { FirebaseOptions } from "firebase/app";
 
 export const firebasePublicEnvironmentKeys = [
-  "NEXT_PUBLIC_FIREBASE_API_KEY",
-  "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-  "NEXT_PUBLIC_FIREBASE_APP_ID",
+  "VITE_FIREBASE_API_KEY",
+  "VITE_FIREBASE_AUTH_DOMAIN",
+  "VITE_FIREBASE_PROJECT_ID",
+  "VITE_FIREBASE_APP_ID",
 ] as const;
 
 export type FirebasePublicEnvironment = Partial<
@@ -14,10 +14,10 @@ export type FirebasePublicEnvironment = Partial<
 export function readFirebasePublicConfig(
   environment: FirebasePublicEnvironment,
 ): FirebaseOptions | null {
-  const apiKey = environment.NEXT_PUBLIC_FIREBASE_API_KEY?.trim();
-  const authDomain = environment.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim();
-  const projectId = environment.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
-  const appId = environment.NEXT_PUBLIC_FIREBASE_APP_ID?.trim();
+  const apiKey = environment.VITE_FIREBASE_API_KEY?.trim();
+  const authDomain = environment.VITE_FIREBASE_AUTH_DOMAIN?.trim();
+  const projectId = environment.VITE_FIREBASE_PROJECT_ID?.trim();
+  const appId = environment.VITE_FIREBASE_APP_ID?.trim();
 
   const values = [apiKey, authDomain, projectId, appId];
   if (values.every((value) => !value)) return null;

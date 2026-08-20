@@ -1,6 +1,4 @@
-"use client";
-
-/* eslint-disable @next/next/no-img-element -- User-supplied QR images and previews must preserve their original pixels. */
+/* eslint-disable @next/next/no-img-element -- The transitional lint preset is removed with the old Next stack; QR uploads intentionally use native images. */
 
 import {
   ChangeEvent,
@@ -22,7 +20,7 @@ type Slide = {
 const SLIDE_DURATION = 15000;
 const STORAGE_URL = "http://127.0.0.1:3001";
 
-export default function Home() {
+export default function App() {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);

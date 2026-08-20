@@ -3,10 +3,10 @@ import test from "node:test";
 import { readFirebasePublicConfig } from "../lib/firebase/config.ts";
 
 const completeEnvironment = {
-  NEXT_PUBLIC_FIREBASE_API_KEY: "api-key",
-  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "qrousel.firebaseapp.com",
-  NEXT_PUBLIC_FIREBASE_PROJECT_ID: "qrousel",
-  NEXT_PUBLIC_FIREBASE_APP_ID: "1:123:web:abc",
+  VITE_FIREBASE_API_KEY: "api-key",
+  VITE_FIREBASE_AUTH_DOMAIN: "qrousel.firebaseapp.com",
+  VITE_FIREBASE_PROJECT_ID: "qrousel",
+  VITE_FIREBASE_APP_ID: "1:123:web:abc",
 };
 
 test("treats an entirely absent Firebase environment as unconfigured", () => {
@@ -17,7 +17,7 @@ test("returns a trimmed Firebase configuration when every value is present", () 
   assert.deepEqual(
     readFirebasePublicConfig({
       ...completeEnvironment,
-      NEXT_PUBLIC_FIREBASE_PROJECT_ID: "  qrousel  ",
+      VITE_FIREBASE_PROJECT_ID: "  qrousel  ",
     }),
     {
       apiKey: "api-key",
@@ -32,8 +32,8 @@ test("rejects a partially configured Firebase environment", () => {
   assert.throws(
     () =>
       readFirebasePublicConfig({
-        NEXT_PUBLIC_FIREBASE_PROJECT_ID: "qrousel",
+        VITE_FIREBASE_PROJECT_ID: "qrousel",
       }),
-    /Missing: NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, NEXT_PUBLIC_FIREBASE_APP_ID/,
+    /Missing: VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_APP_ID/,
   );
 });
