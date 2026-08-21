@@ -9,6 +9,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/workspaces"
+  to = "/.netlify/functions/workspaces"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
