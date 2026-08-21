@@ -12,6 +12,9 @@ function createDependencies(): DeckHandlerDependencies {
     createDeck: async () => {
       throw new Error("Unexpected deck creation.");
     },
+    duplicateDeck: async () => {
+      throw new Error("Unexpected deck duplication.");
+    },
     getDeck: async () => null,
     listDecks: async () => [],
     updateDeck: async () => {
@@ -336,6 +339,64 @@ test("returns the current deck when an editor saves a stale version", async () =
       defaultDisplayDurationSeconds: 20,
       slideCount: 0,
       version: 4,
+    },
+  });
+});
+
+test("duplicates a deck with the editor's selected copy settings", async () => {
+  const dependencies = createDependencies();
+  dependencies.authorizeWorkspace = async () => ({ role: "editor" });
+  dependencies.duplicateDeck = async (
+    _account,
+    workspaceId,
+    sourceDeckId,
+    input,
+  ) => {
+    assert.equal(workspaceId, "workspace-1");
+    assert.equal(sourceDeckId, "deck-1");
+    assert.deepEqual(input, {
+      name: "Visitor welcome",
+      defaultDisplayDurationSeconds: 24,
+    });
+    return {
+      kind: "duplicated",
+      deck: {
+        id: "deck-copy",
+        name: "Visitor welcome",
+        publicationStatus: "draft",
+        defaultDisplayDurationSeconds: 24,
+        slideCount: 0,
+        version: 1,
+      },
+    };
+  };
+  const handler = createDeckHandler(dependencies);
+  const response = await handler(
+    new Request(
+      "https://qrousel.test/api/workspaces/workspace-1/decks/deck-1/duplicate",
+      {
+        method: "POST",
+        headers: {
+          authorization: "Bearer valid-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: "Visitor welcome",
+          defaultDisplayDurationSeconds: 24,
+        }),
+      },
+    ),
+  );
+
+  assert.equal(response.status, 201);
+  assert.deepEqual(await response.json(), {
+    deck: {
+      id: "deck-copy",
+      name: "Visitor welcome",
+      publicationStatus: "draft",
+      defaultDisplayDurationSeconds: 24,
+      slideCount: 0,
+      version: 1,
     },
   });
 });

@@ -180,6 +180,10 @@ function WorkspacePage({
           deckId={selectedDeckId}
           role={workspace.role}
           onBack={() => navigate("decks")}
+          onDuplicated={(deck) => {
+            deckLibrary.acceptCreatedDeck(deck);
+            onOpenDeck(deck.id);
+          }}
           onUpdated={deckLibrary.acceptUpdatedDeck}
         />
       );
