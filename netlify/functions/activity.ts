@@ -1,10 +1,12 @@
 import {
+  FieldPath,
   getFirestore,
   Timestamp,
   type DocumentSnapshot,
 } from "firebase-admin/firestore";
 import {
   WORKSPACE_ACTIVITY_TYPES,
+  type ActivityListResponse,
   type WorkspaceActivityEntry,
   type WorkspaceActivityType,
 } from "../../lib/activity/api-response.ts";
@@ -26,7 +28,10 @@ export type ActivityHandlerDependencies = {
     account: AuthenticatedActivityAccount,
     workspaceId: string,
   ) => Promise<WorkspaceActivityAccess | null>;
-  listActivity: (workspaceId: string) => Promise<WorkspaceActivityEntry[]>;
+  listActivity: (
+    workspaceId: string,
+    cursor: string | null,
+  ) => Promise<ActivityListResponse>;
 };
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
@@ -90,9 +95,8 @@ export function createActivityHandler(
       return jsonResponse({ error: "Workspace access denied." }, 403);
     }
 
-    return jsonResponse({
-      activity: await dependencies.listActivity(workspaceId),
-    });
+    const cursor = new URL(request.url).searchParams.get("cursor") || null;
+    return jsonResponse(await dependencies.listActivity(workspaceId, cursor));
   };
 }
 
@@ -160,6 +164,47 @@ function activityEntryFromSnapshot(
   };
 }
 
+type ActivityCursor = { occurredAt: string; id: string };
+
+function parseActivityCursor(value: string): ActivityCursor | null {
+  try {
+    const parsed: unknown = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf8"),
+    );
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      !("occurredAt" in parsed) ||
+      !("id" in parsed) ||
+      typeof parsed.occurredAt !== "string" ||
+      typeof parsed.id !== "string" ||
+      parsed.id.length === 0
+    ) {
+      return null;
+    }
+    const occurredAt = new Date(parsed.occurredAt);
+    return !Number.isNaN(occurredAt.valueOf()) &&
+      occurredAt.toISOString() === parsed.occurredAt
+      ? { occurredAt: parsed.occurredAt, id: parsed.id }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function encodeActivityCursor(snapshot: DocumentSnapshot): string {
+  const createdAt = snapshot.get("createdAt");
+  if (!(createdAt instanceof Timestamp)) {
+    throw new Error("The activity cursor cannot be created.");
+  }
+  return Buffer.from(
+    JSON.stringify({
+      occurredAt: createdAt.toDate().toISOString(),
+      id: snapshot.id,
+    }),
+  ).toString("base64url");
+}
+
 const productionDependencies: ActivityHandlerDependencies = {
   authenticate(idToken) {
     return authenticateActiveAccount(idToken);
@@ -184,13 +229,24 @@ const productionDependencies: ActivityHandlerDependencies = {
     return { role };
   },
 
-  async listActivity(workspaceId) {
+  async listActivity(workspaceId, cursor) {
     const firestore = getFirestore(getFirebaseAdminApp());
-    const snapshots = await firestore
+    let query = firestore
       .collection(`workspaces/${workspaceId}/activity`)
       .orderBy("createdAt", "desc")
-      .limit(100)
-      .get();
+      .orderBy(FieldPath.documentId())
+      .limit(25);
+    if (cursor !== null) {
+      const parsedCursor = parseActivityCursor(cursor);
+      if (parsedCursor === null) {
+        throw new Error("The activity cursor is invalid.");
+      }
+      query = query.startAfter(
+        Timestamp.fromDate(new Date(parsedCursor.occurredAt)),
+        parsedCursor.id,
+      );
+    }
+    const snapshots = await query.get();
     const actorUids = [
       ...new Set(
         snapshots.docs.flatMap((snapshot) => {
@@ -216,7 +272,7 @@ const productionDependencies: ActivityHandlerDependencies = {
       ]),
     );
 
-    return snapshots.docs.flatMap((snapshot) => {
+    const activity = snapshots.docs.flatMap((snapshot) => {
       const actorUid = snapshot.get("actorUid");
       if (typeof actorUid !== "string" || actorUid.length === 0) return [];
       const entry = activityEntryFromSnapshot(
@@ -225,6 +281,13 @@ const productionDependencies: ActivityHandlerDependencies = {
       );
       return entry === null ? [] : [entry];
     });
+    return {
+      activity,
+      nextCursor:
+        snapshots.docs.length === 25
+          ? encodeActivityCursor(snapshots.docs.at(-1)!)
+          : null,
+    };
   },
 };
 
