@@ -824,6 +824,31 @@ button {
   white-space: nowrap;
 }
 
+.activity-load-older {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.activity-load-older button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.activity-load-older button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

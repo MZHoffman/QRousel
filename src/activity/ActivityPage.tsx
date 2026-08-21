@@ -6,7 +6,11 @@ import { requestWorkspaceActivity } from "./activity-client";
 
 type ActivityState =
   | { kind: "loading" }
-  | { kind: "ready"; activity: WorkspaceActivityEntry[] }
+  | {
+      kind: "ready";
+      activity: WorkspaceActivityEntry[];
+      nextCursor: string | null;
+    }
   | { kind: "error"; message: string };
 
 const TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
@@ -28,12 +32,17 @@ export default function ActivityPage({
 }) {
   const [state, setState] = useState<ActivityState>({ kind: "loading" });
   const [reloadVersion, setReloadVersion] = useState(0);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [olderError, setOlderError] = useState("");
 
   useEffect(() => {
     let current = true;
     void requestWorkspaceActivity(user, workspaceId).then(
-      (activity) => {
-        if (current) setState({ kind: "ready", activity });
+      (page) => {
+        if (current) {
+          setState({ kind: "ready", ...page });
+          setOlderError("");
+        }
       },
       (error: unknown) => {
         if (!current) return;
@@ -54,6 +63,42 @@ export default function ActivityPage({
   function retry() {
     setState({ kind: "loading" });
     setReloadVersion((version) => version + 1);
+  }
+
+  async function loadOlder() {
+    if (
+      state.kind !== "ready" ||
+      state.nextCursor === null ||
+      isLoadingOlder
+    ) {
+      return;
+    }
+    setIsLoadingOlder(true);
+    setOlderError("");
+    try {
+      const page = await requestWorkspaceActivity(
+        user,
+        workspaceId,
+        state.nextCursor,
+      );
+      setState((current) =>
+        current.kind !== "ready"
+          ? current
+          : {
+              kind: "ready",
+              activity: [...current.activity, ...page.activity],
+              nextCursor: page.nextCursor,
+            },
+      );
+    } catch (error) {
+      setOlderError(
+        error instanceof Error
+          ? error.message
+          : "QRousel could not load older activity.",
+      );
+    } finally {
+      setIsLoadingOlder(false);
+    }
   }
 
   return (
@@ -98,7 +143,7 @@ export default function ActivityPage({
             <span>
               {state.activity.length} {state.activity.length === 1 ? "event" : "events"}
             </span>
-            <span>Showing the latest 100 changes</span>
+            <span>Loaded in pages of 25 changes</span>
           </div>
           <ol className="activity-feed" aria-label="Workspace activity">
             {state.activity.map((entry) => {
@@ -125,6 +170,22 @@ export default function ActivityPage({
               );
             })}
           </ol>
+          {state.nextCursor !== null && (
+            <div className="activity-load-older">
+              {olderError && (
+                <p className="auth-error" role="alert">
+                  {olderError}
+                </p>
+              )}
+              <button
+                type="button"
+                disabled={isLoadingOlder}
+                onClick={() => void loadOlder()}
+              >
+                {isLoadingOlder ? "Loading older activity…" : "Load older activity"}
+              </button>
+            </div>
+          )}
         </>
       )}
     </>
