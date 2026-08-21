@@ -9,11 +9,13 @@ export type DeckSummary = {
   publicationStatus: DeckPublicationStatus;
   defaultDisplayDurationSeconds: number;
   slideCount: number;
+  version: number;
 };
 
 export type DeckListResponse = { decks: DeckSummary[] };
 export type DeckCreationResponse = { deck: DeckSummary };
 export type DeckLimitResponse = { status: "limit_reached"; limit: number };
+export type DeckConflictResponse = { status: "conflict"; deck: DeckSummary };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -36,7 +38,9 @@ function isDeckSummary(value: unknown): value is DeckSummary {
     ) &&
     Number.isSafeInteger(value.defaultDisplayDurationSeconds) &&
     Number(value.defaultDisplayDurationSeconds) > 0 &&
-    isNonNegativeInteger(value.slideCount)
+    isNonNegativeInteger(value.slideCount) &&
+    Number.isSafeInteger(value.version) &&
+    Number(value.version) > 0
   );
 }
 
@@ -60,5 +64,15 @@ export function isDeckLimitResponse(value: unknown): value is DeckLimitResponse 
     value.status === "limit_reached" &&
     Number.isSafeInteger(value.limit) &&
     Number(value.limit) > 0
+  );
+}
+
+export function isDeckConflictResponse(
+  value: unknown,
+): value is DeckConflictResponse {
+  return (
+    isRecord(value) &&
+    value.status === "conflict" &&
+    isDeckSummary(value.deck)
   );
 }

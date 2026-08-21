@@ -1,9 +1,14 @@
-import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import {
+  FieldValue,
+  getFirestore,
+  type DocumentSnapshot,
+} from "firebase-admin/firestore";
 import {
   DECK_PUBLICATION_STATUSES,
   type DeckSummary,
 } from "../../lib/decks/api-response.ts";
 import { decideDeckCreation } from "../../lib/decks/creation.ts";
+import { decideDeckUpdate } from "../../lib/decks/update.ts";
 import {
   WORKSPACE_ROLES,
   type WorkspaceRole,
@@ -18,6 +23,11 @@ export type DeckCreationResult =
   | { kind: "created"; deck: DeckSummary }
   | { kind: "limit"; limit: number };
 
+export type DeckUpdateResult =
+  | { kind: "updated"; deck: DeckSummary }
+  | { kind: "conflict"; deck: DeckSummary }
+  | { kind: "missing" };
+
 export type DeckHandlerDependencies = {
   authenticate: (idToken: string) => Promise<AuthenticatedDeckAccount | null>;
   authorizeWorkspace: (
@@ -29,10 +39,25 @@ export type DeckHandlerDependencies = {
     workspaceId: string,
     requestedName: string,
   ) => Promise<DeckCreationResult>;
+  getDeck: (
+    account: AuthenticatedDeckAccount,
+    workspaceId: string,
+    deckId: string,
+  ) => Promise<DeckSummary | null>;
   listDecks: (
     account: AuthenticatedDeckAccount,
     workspaceId: string,
   ) => Promise<DeckSummary[]>;
+  updateDeck: (
+    account: AuthenticatedDeckAccount,
+    workspaceId: string,
+    deckId: string,
+    input: {
+      name: string;
+      defaultDisplayDurationSeconds: number;
+      expectedVersion: number;
+    },
+  ) => Promise<DeckUpdateResult>;
 };
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
@@ -51,16 +76,24 @@ function readBearerToken(request: Request): string | null {
   return token.length > 0 ? token : null;
 }
 
-function readWorkspaceId(request: Request): string | null {
+function readDeckRoute(
+  request: Request,
+): { workspaceId: string; deckId: string | null } | null {
   const url = new URL(request.url);
   const queryId = url.searchParams.get("workspaceId")?.trim();
-  if (queryId) return queryId;
+  const queryDeckId = url.searchParams.get("deckId")?.trim() || null;
+  if (queryId) return { workspaceId: queryId, deckId: queryDeckId };
 
-  const match = url.pathname.match(/^\/api\/workspaces\/([^/]+)\/decks$/);
+  const match = url.pathname.match(
+    /^\/api\/workspaces\/([^/]+)\/decks(?:\/([^/]+))?$/,
+  );
   if (!match?.[1]) return null;
   try {
     const workspaceId = decodeURIComponent(match[1]).trim();
-    return workspaceId.length > 0 ? workspaceId : null;
+    const deckId = match[2] ? decodeURIComponent(match[2]).trim() : null;
+    return workspaceId.length > 0 && (!match[2] || deckId)
+      ? { workspaceId, deckId }
+      : null;
   } catch {
     return null;
   }
@@ -78,10 +111,11 @@ export function createDeckHandler(dependencies: DeckHandlerDependencies) {
       return jsonResponse({ error: "Authentication required." }, 401);
     }
 
-    const workspaceId = readWorkspaceId(request);
-    if (workspaceId === null) {
+    const route = readDeckRoute(request);
+    if (route === null) {
       return jsonResponse({ error: "A workspace is required." }, 400);
     }
+    const { workspaceId, deckId } = route;
 
     const access = await dependencies.authorizeWorkspace(account, workspaceId);
     if (access === null) {
@@ -89,11 +123,17 @@ export function createDeckHandler(dependencies: DeckHandlerDependencies) {
     }
 
     if (request.method === "GET") {
+      if (deckId !== null) {
+        const deck = await dependencies.getDeck(account, workspaceId, deckId);
+        return deck === null
+          ? jsonResponse({ error: "Deck not found." }, 404)
+          : jsonResponse({ deck });
+      }
       const decks = await dependencies.listDecks(account, workspaceId);
       return jsonResponse({ decks });
     }
 
-    if (request.method === "POST") {
+    if (request.method === "POST" && deckId === null) {
       if (access.role === "viewer") {
         return jsonResponse({ error: "Editing access required." }, 403);
       }
@@ -123,6 +163,52 @@ export function createDeckHandler(dependencies: DeckHandlerDependencies) {
       return jsonResponse({ deck: result.deck }, 201);
     }
 
+    if (request.method === "PATCH" && deckId !== null) {
+      if (access.role === "viewer") {
+        return jsonResponse({ error: "Editing access required." }, 403);
+      }
+
+      const body: unknown = await request.json().catch(() => null);
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("name" in body) ||
+        typeof body.name !== "string" ||
+        body.name.trim().length === 0 ||
+        !("defaultDisplayDurationSeconds" in body) ||
+        !Number.isSafeInteger(body.defaultDisplayDurationSeconds) ||
+        Number(body.defaultDisplayDurationSeconds) < 1 ||
+        !("expectedVersion" in body) ||
+        !Number.isSafeInteger(body.expectedVersion) ||
+        Number(body.expectedVersion) < 1
+      ) {
+        return jsonResponse({ error: "Valid deck settings are required." }, 400);
+      }
+
+      const result = await dependencies.updateDeck(
+        account,
+        workspaceId,
+        deckId,
+        {
+          name: body.name,
+          defaultDisplayDurationSeconds: Number(
+            body.defaultDisplayDurationSeconds,
+          ),
+          expectedVersion: Number(body.expectedVersion),
+        },
+      );
+      if (result.kind === "missing") {
+        return jsonResponse({ error: "Deck not found." }, 404);
+      }
+      if (result.kind === "conflict") {
+        return jsonResponse(
+          { status: "conflict", deck: result.deck },
+          409,
+        );
+      }
+      return jsonResponse({ deck: result.deck });
+    }
+
     return jsonResponse({ error: "Method not allowed." }, 405);
   };
 }
@@ -136,6 +222,45 @@ function isWorkspaceRole(value: unknown): value is WorkspaceRole {
 
 function isEditingRole(role: WorkspaceRole): boolean {
   return role !== "viewer";
+}
+
+function deckSummaryFromSnapshot(
+  snapshot: DocumentSnapshot,
+): DeckSummary | null {
+  const name = snapshot.get("name");
+  const publicationStatus = snapshot.get("publicationStatus");
+  const defaultDisplayDurationSeconds = snapshot.get(
+    "defaultDisplayDurationSeconds",
+  );
+  const slideCount = snapshot.get("slideCount");
+  const version = snapshot.get("version") ?? 1;
+  if (
+    !snapshot.exists ||
+    snapshot.get("status") !== "active" ||
+    typeof name !== "string" ||
+    name.length === 0 ||
+    typeof publicationStatus !== "string" ||
+    !DECK_PUBLICATION_STATUSES.includes(
+      publicationStatus as DeckSummary["publicationStatus"],
+    ) ||
+    !Number.isSafeInteger(defaultDisplayDurationSeconds) ||
+    defaultDisplayDurationSeconds <= 0 ||
+    !Number.isSafeInteger(slideCount) ||
+    slideCount < 0 ||
+    !Number.isSafeInteger(version) ||
+    version < 1
+  ) {
+    return null;
+  }
+
+  return {
+    id: snapshot.id,
+    name,
+    publicationStatus: publicationStatus as DeckSummary["publicationStatus"],
+    defaultDisplayDurationSeconds,
+    slideCount,
+    version,
+  };
 }
 
 const productionDependencies: DeckHandlerDependencies = {
@@ -170,38 +295,16 @@ const productionDependencies: DeckHandlerDependencies = {
       .get();
 
     return snapshots.docs.flatMap((snapshot) => {
-      const name = snapshot.get("name");
-      const publicationStatus = snapshot.get("publicationStatus");
-      const defaultDisplayDurationSeconds = snapshot.get(
-        "defaultDisplayDurationSeconds",
-      );
-      const slideCount = snapshot.get("slideCount");
-      if (
-        snapshot.get("status") !== "active" ||
-        typeof name !== "string" ||
-        name.length === 0 ||
-        typeof publicationStatus !== "string" ||
-        !DECK_PUBLICATION_STATUSES.includes(
-          publicationStatus as DeckSummary["publicationStatus"],
-        ) ||
-        !Number.isSafeInteger(defaultDisplayDurationSeconds) ||
-        defaultDisplayDurationSeconds <= 0 ||
-        !Number.isSafeInteger(slideCount) ||
-        slideCount < 0
-      ) {
-        return [];
-      }
-
-      return [
-        {
-          id: snapshot.id,
-          name,
-          publicationStatus: publicationStatus as DeckSummary["publicationStatus"],
-          defaultDisplayDurationSeconds,
-          slideCount,
-        },
-      ];
+      const deck = deckSummaryFromSnapshot(snapshot);
+      return deck === null ? [] : [deck];
     });
+  },
+
+  async getDeck(_account, workspaceId, deckId) {
+    const snapshot = await getFirestore(getFirebaseAdminApp())
+      .doc(`workspaces/${workspaceId}/decks/${deckId}`)
+      .get();
+    return deckSummaryFromSnapshot(snapshot);
   },
 
   async createDeck(account, workspaceId, requestedName) {
@@ -249,6 +352,7 @@ const productionDependencies: DeckHandlerDependencies = {
         slideCount: 0,
         status: "active",
         updatedAt: now,
+        version: 1,
         workspaceId,
       });
       transaction.set(activityRef, {
@@ -270,6 +374,94 @@ const productionDependencies: DeckHandlerDependencies = {
           defaultDisplayDurationSeconds:
             decision.defaultDisplayDurationSeconds,
           slideCount: 0,
+          version: 1,
+        },
+      };
+    });
+  },
+
+  async updateDeck(account, workspaceId, deckId, input) {
+    const firestore = getFirestore(getFirebaseAdminApp());
+    const workspaceRef = firestore.doc(`workspaces/${workspaceId}`);
+    const membershipRef = firestore.doc(
+      `workspaceMemberships/${workspaceId}_${account.uid}`,
+    );
+    const deckRef = workspaceRef.collection("decks").doc(deckId);
+    const activityRef = workspaceRef.collection("activity").doc();
+
+    return firestore.runTransaction(async (transaction) => {
+      const membershipSnapshot = await transaction.get(membershipRef);
+      const workspaceSnapshot = await transaction.get(workspaceRef);
+      const deckSnapshot = await transaction.get(deckRef);
+      const role = membershipSnapshot.get("role");
+      if (
+        !membershipSnapshot.exists ||
+        membershipSnapshot.get("status") !== "active" ||
+        !isWorkspaceRole(role) ||
+        !isEditingRole(role) ||
+        !workspaceSnapshot.exists ||
+        workspaceSnapshot.get("status") !== "active"
+      ) {
+        throw new Error("Workspace editing access is unavailable.");
+      }
+
+      if (!deckSnapshot.exists || deckSnapshot.get("status") !== "active") {
+        return { kind: "missing" as const };
+      }
+      const currentDeck = deckSummaryFromSnapshot(deckSnapshot);
+      if (currentDeck === null) {
+        throw new Error("The stored deck is invalid.");
+      }
+
+      const decision = decideDeckUpdate({
+        currentVersion: currentDeck.version,
+        expectedVersion: input.expectedVersion,
+        requestedName: input.name,
+        requestedDefaultDisplayDurationSeconds:
+          input.defaultDisplayDurationSeconds,
+      });
+      if (decision.kind === "conflict") {
+        return { kind: "conflict" as const, deck: currentDeck };
+      }
+
+      const changedFields = [
+        ...(decision.name === currentDeck.name ? [] : ["name"]),
+        ...(decision.defaultDisplayDurationSeconds ===
+        currentDeck.defaultDisplayDurationSeconds
+          ? []
+          : ["defaultDisplayDurationSeconds"]),
+      ];
+      const now = FieldValue.serverTimestamp();
+      transaction.update(deckRef, {
+        defaultDisplayDurationSeconds:
+          decision.defaultDisplayDurationSeconds,
+        name: decision.name,
+        updatedAt: now,
+        updatedBy: account.uid,
+        version: decision.nextVersion,
+      });
+      transaction.update(workspaceRef, { updatedAt: now });
+      transaction.set(activityRef, {
+        actorUid: account.uid,
+        changedFields,
+        createdAt: now,
+        previousVersion: currentDeck.version,
+        resourceId: deckId,
+        resourceName: decision.name,
+        resourceType: "deck",
+        type: "deck.updated",
+        version: decision.nextVersion,
+        workspaceId,
+      });
+
+      return {
+        kind: "updated" as const,
+        deck: {
+          ...currentDeck,
+          name: decision.name,
+          defaultDisplayDurationSeconds:
+            decision.defaultDisplayDurationSeconds,
+          version: decision.nextVersion,
         },
       };
     });

@@ -12,7 +12,11 @@ function createDependencies(): DeckHandlerDependencies {
     createDeck: async () => {
       throw new Error("Unexpected deck creation.");
     },
+    getDeck: async () => null,
     listDecks: async () => [],
+    updateDeck: async () => {
+      throw new Error("Unexpected deck update.");
+    },
   };
 }
 
@@ -39,6 +43,7 @@ test("lists decks for an authorized workspace member", async () => {
         publicationStatus: "draft",
         defaultDisplayDurationSeconds: 15,
         slideCount: 0,
+        version: 1,
       },
     ];
   };
@@ -58,6 +63,7 @@ test("lists decks for an authorized workspace member", async () => {
         publicationStatus: "draft",
         defaultDisplayDurationSeconds: 15,
         slideCount: 0,
+        version: 1,
       },
     ],
   });
@@ -91,6 +97,7 @@ test("creates a draft deck for a workspace editor", async () => {
         publicationStatus: "draft",
         defaultDisplayDurationSeconds: 15,
         slideCount: 0,
+        version: 1,
       },
     };
   };
@@ -114,6 +121,7 @@ test("creates a draft deck for a workspace editor", async () => {
       publicationStatus: "draft",
       defaultDisplayDurationSeconds: 15,
       slideCount: 0,
+      version: 1,
     },
   });
 });
@@ -135,6 +143,28 @@ test("allows viewers to list decks but not create them", async () => {
 
   assert.equal(response.status, 403);
   assert.deepEqual(await response.json(), { error: "Editing access required." });
+
+  const updateResponse = await handler(
+    new Request(
+      "https://qrousel.test/api/workspaces/workspace-1/decks/deck-1",
+      {
+        method: "PATCH",
+        headers: {
+          authorization: "Bearer valid-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: "Viewer edit",
+          defaultDisplayDurationSeconds: 20,
+          expectedVersion: 1,
+        }),
+      },
+    ),
+  );
+  assert.equal(updateResponse.status, 403);
+  assert.deepEqual(await updateResponse.json(), {
+    error: "Editing access required.",
+  });
 });
 
 test("reports the deck limit and rejects an empty name", async () => {
@@ -171,5 +201,141 @@ test("reports the deck limit and rejects an empty name", async () => {
   assert.equal(invalidResponse.status, 400);
   assert.deepEqual(await invalidResponse.json(), {
     error: "A deck name is required.",
+  });
+});
+
+test("loads one deck for the editor route", async () => {
+  const dependencies = createDependencies();
+  dependencies.getDeck = async (_account, workspaceId, deckId) => {
+    assert.equal(workspaceId, "workspace-1");
+    assert.equal(deckId, "deck-1");
+    return {
+      id: "deck-1",
+      name: "Autumn campaign",
+      publicationStatus: "draft",
+      defaultDisplayDurationSeconds: 15,
+      slideCount: 0,
+      version: 1,
+    };
+  };
+  const handler = createDeckHandler(dependencies);
+  const response = await handler(
+    new Request(
+      "https://qrousel.test/api/workspaces/workspace-1/decks/deck-1",
+      { headers: { authorization: "Bearer valid-token" } },
+    ),
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    deck: {
+      id: "deck-1",
+      name: "Autumn campaign",
+      publicationStatus: "draft",
+      defaultDisplayDurationSeconds: 15,
+      slideCount: 0,
+      version: 1,
+    },
+  });
+});
+
+test("updates deck settings for an editor with the expected version", async () => {
+  const dependencies = createDependencies();
+  dependencies.authorizeWorkspace = async () => ({ role: "editor" });
+  dependencies.updateDeck = async (_account, workspaceId, deckId, input) => {
+    assert.equal(workspaceId, "workspace-1");
+    assert.equal(deckId, "deck-1");
+    assert.deepEqual(input, {
+      name: "Visitor welcome",
+      defaultDisplayDurationSeconds: 24,
+      expectedVersion: 2,
+    });
+    return {
+      kind: "updated",
+      deck: {
+        id: "deck-1",
+        name: "Visitor welcome",
+        publicationStatus: "draft",
+        defaultDisplayDurationSeconds: 24,
+        slideCount: 0,
+        version: 3,
+      },
+    };
+  };
+  const handler = createDeckHandler(dependencies);
+  const response = await handler(
+    new Request(
+      "https://qrousel.test/api/workspaces/workspace-1/decks/deck-1",
+      {
+        method: "PATCH",
+        headers: {
+          authorization: "Bearer valid-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: "Visitor welcome",
+          defaultDisplayDurationSeconds: 24,
+          expectedVersion: 2,
+        }),
+      },
+    ),
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    deck: {
+      id: "deck-1",
+      name: "Visitor welcome",
+      publicationStatus: "draft",
+      defaultDisplayDurationSeconds: 24,
+      slideCount: 0,
+      version: 3,
+    },
+  });
+});
+
+test("returns the current deck when an editor saves a stale version", async () => {
+  const dependencies = createDependencies();
+  dependencies.updateDeck = async () => ({
+    kind: "conflict",
+    deck: {
+      id: "deck-1",
+      name: "Changed elsewhere",
+      publicationStatus: "draft",
+      defaultDisplayDurationSeconds: 20,
+      slideCount: 0,
+      version: 4,
+    },
+  });
+  const handler = createDeckHandler(dependencies);
+  const response = await handler(
+    new Request(
+      "https://qrousel.test/api/workspaces/workspace-1/decks/deck-1",
+      {
+        method: "PATCH",
+        headers: {
+          authorization: "Bearer valid-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: "My stale change",
+          defaultDisplayDurationSeconds: 18,
+          expectedVersion: 3,
+        }),
+      },
+    ),
+  );
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), {
+    status: "conflict",
+    deck: {
+      id: "deck-1",
+      name: "Changed elsewhere",
+      publicationStatus: "draft",
+      defaultDisplayDurationSeconds: 20,
+      slideCount: 0,
+      version: 4,
+    },
   });
 });

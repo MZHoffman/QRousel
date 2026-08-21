@@ -75,6 +75,20 @@ export function useDeckLibrary(user: User, workspaceId: string) {
     }
   }
 
+  function acceptUpdatedDeck(deck: DeckSummary) {
+    setState((current) => {
+      if (current.kind !== "ready" || current.workspaceId !== workspaceId) {
+        return { kind: "ready", workspaceId, decks: [deck] };
+      }
+      return {
+        ...current,
+        decks: current.decks.map((item) =>
+          item.id === deck.id ? deck : item,
+        ),
+      };
+    });
+  }
+
   return {
     state: currentState,
     decks: currentState.kind === "ready" ? currentState.decks : [],
@@ -82,6 +96,7 @@ export function useDeckLibrary(user: User, workspaceId: string) {
     creationError,
     clearCreationError: () => setCreationError(""),
     create,
+    acceptUpdatedDeck,
     retry: async () => {
       setState({ kind: "loading", workspaceId });
       setReloadVersion((version) => version + 1);

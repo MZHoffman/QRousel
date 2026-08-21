@@ -5,7 +5,12 @@ import type {
   WorkspaceSummary,
 } from "../../lib/workspaces/api-response";
 import DeckLibraryPage from "../decks/DeckLibraryPage";
+import DeckEditorPage from "../decks/DeckEditorPage";
 import { useDeckLibrary } from "../decks/use-deck-library";
+import {
+  resolveWorkspaceDeckId,
+  workspaceDeckPath,
+} from "../../lib/decks/navigation";
 import {
   WORKSPACE_NAVIGATION,
   resolveWorkspaceSection,
@@ -150,6 +155,9 @@ function WorkspacePage({
   deckCreationOpen,
   onDeckCreationOpen,
   onDeckCreationClose,
+  selectedDeckId,
+  user,
+  onOpenDeck,
 }: {
   section: WorkspaceSection;
   workspace: WorkspaceSummary;
@@ -159,8 +167,23 @@ function WorkspacePage({
   deckCreationOpen: boolean;
   onDeckCreationOpen: () => void;
   onDeckCreationClose: () => void;
+  selectedDeckId: string | null;
+  user: User;
+  onOpenDeck: (deckId: string) => void;
 }) {
   if (section === "decks") {
+    if (selectedDeckId !== null) {
+      return (
+        <DeckEditorPage
+          user={user}
+          workspaceId={workspace.id}
+          deckId={selectedDeckId}
+          role={workspace.role}
+          onBack={() => navigate("decks")}
+          onUpdated={deckLibrary.acceptUpdatedDeck}
+        />
+      );
+    }
     return (
       <DeckLibraryPage
         library={deckLibrary}
@@ -168,6 +191,7 @@ function WorkspacePage({
         creationOpen={deckCreationOpen}
         onCreationOpen={onDeckCreationOpen}
         onCreationClose={onDeckCreationClose}
+        onOpenDeck={onOpenDeck}
       />
     );
   }
@@ -325,20 +349,38 @@ export default function WorkspaceShell({
     resolveWorkspaceSection(window.location.pathname),
   );
   const [deckCreationOpen, setDeckCreationOpen] = useState(false);
+  const [selectedDeckId, setSelectedDeckId] = useState<string | null>(() =>
+    resolveWorkspaceDeckId(window.location.pathname, workspace.id),
+  );
   const deckLibrary = useDeckLibrary(user, workspace.id);
 
   useEffect(() => {
     function handleHistoryChange() {
       setSection(resolveWorkspaceSection(window.location.pathname));
+      setSelectedDeckId(
+        resolveWorkspaceDeckId(window.location.pathname, workspace.id),
+      );
     }
     window.addEventListener("popstate", handleHistoryChange);
     return () => window.removeEventListener("popstate", handleHistoryChange);
-  }, []);
+  }, [workspace.id]);
 
   function navigate(nextSection: WorkspaceSection) {
     const path = workspaceSectionPath(workspace.id, nextSection);
     window.history.pushState({}, "", path);
     setSection(nextSection);
+    setSelectedDeckId(null);
+  }
+
+  function openDeck(deckId: string) {
+    window.history.pushState(
+      {},
+      "",
+      workspaceDeckPath(workspace.id, deckId),
+    );
+    setSection("decks");
+    setSelectedDeckId(deckId);
+    setDeckCreationOpen(false);
   }
 
   function openDeckCreation() {
@@ -379,6 +421,7 @@ export default function WorkspaceShell({
               );
               if (selected) {
                 setSection("overview");
+                setSelectedDeckId(null);
                 setDeckCreationOpen(false);
                 onWorkspaceChange(selected);
               }
@@ -445,6 +488,9 @@ export default function WorkspaceShell({
             deckCreationOpen={deckCreationOpen}
             onDeckCreationOpen={openDeckCreation}
             onDeckCreationClose={() => setDeckCreationOpen(false)}
+            selectedDeckId={selectedDeckId}
+            user={user}
+            onOpenDeck={openDeck}
           />
         </section>
       </div>
