@@ -703,6 +703,127 @@ button {
   margin: 0 0 0 3px;
 }
 
+.activity-page-heading > span {
+  align-self: flex-start;
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: rgba(30, 107, 75, 0.1);
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.activity-status {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 40px;
+  text-align: center;
+}
+
+.activity-status h2 {
+  margin: 16px 0 7px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.activity-status p {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.activity-status button {
+  min-height: 40px;
+  margin-top: 14px;
+  padding: 0 15px;
+  border: 1px solid #13271f;
+  border-radius: 9px;
+  background: #13271f;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.activity-feed-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: -12px 0 14px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.activity-feed {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-feed li {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 17px 19px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 253, 248, 0.9);
+}
+
+.activity-feed-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(30, 107, 75, 0.09);
+  color: var(--green);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.activity-feed-copy {
+  min-width: 0;
+}
+
+.activity-feed-copy strong {
+  font-size: 12px;
+}
+
+.activity-feed-copy p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.activity-feed-copy > span {
+  display: block;
+  margin-top: 6px;
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.activity-feed time {
+  color: var(--muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -2068,6 +2189,31 @@ label:has(input:focus-visible) {
   .workspace-list-card .workspace-role {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .activity-page-heading > span {
+    justify-self: start;
+  }
+
+  .activity-feed-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .activity-feed li {
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start;
+    padding: 15px;
+  }
+
+  .activity-feed-mark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .activity-feed time {
+    grid-column: 2;
   }
 
   .slide {

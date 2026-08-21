@@ -4,6 +4,7 @@ import type {
   WorkspaceRole,
   WorkspaceSummary,
 } from "../../lib/workspaces/api-response";
+import ActivityPage from "../activity/ActivityPage";
 import DeckLibraryPage from "../decks/DeckLibraryPage";
 import DeckEditorPage from "../decks/DeckEditorPage";
 import { useDeckLibrary } from "../decks/use-deck-library";
@@ -231,24 +232,7 @@ function WorkspacePage({
   }
 
   if (section === "activity") {
-    return (
-      <>
-        <header className="workspace-page-heading">
-          <div>
-            <p className="workspace-kicker">Immutable history</p>
-            <h1>Activity</h1>
-            <p>Review important changes made across this workspace.</p>
-          </div>
-        </header>
-        <section className="workspace-list-card workspace-activity-item">
-          <span className="workspace-activity-dot" aria-hidden="true" />
-          <div>
-            <strong>Workspace created</strong>
-            <span>{workspace.name} is ready to use.</span>
-          </div>
-        </section>
-      </>
-    );
+    return <ActivityPage user={user} workspaceId={workspace.id} />;
   }
 
   if (section === "trash") {
@@ -323,12 +307,12 @@ function WorkspacePage({
         <section className="workspace-panel">
           <div className="workspace-panel-heading">
             <div>
-              <p className="workspace-kicker">Recent activity</p>
-              <h2>Workspace created</h2>
+              <p className="workspace-kicker">Activity history</p>
+              <h2>Track workspace changes</h2>
             </div>
             <span className="workspace-activity-dot" aria-hidden="true" />
           </div>
-          <p>{workspace.name} is ready for your content.</p>
+          <p>See who created, updated, or copied workspace resources.</p>
           <button
             className="workspace-text-button"
             type="button"
