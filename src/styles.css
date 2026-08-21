@@ -1314,13 +1314,32 @@ label:has(input:focus-visible) {
     height: 30px;
   }
 
-  .workspace-mobile-header > span {
+  .workspace-mobile-header > div {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .workspace-mobile-header > div > span {
     max-width: 45vw;
     overflow: hidden;
     color: var(--muted);
     font-size: 11px;
     font-weight: 800;
     text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .workspace-mobile-header button {
+    padding: 5px 0;
+    border: 0;
+    background: transparent;
+    color: var(--green);
+    cursor: pointer;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 900;
     white-space: nowrap;
   }
 

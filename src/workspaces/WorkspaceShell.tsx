@@ -387,7 +387,12 @@ export default function WorkspaceShell({
             </span>
             QRousel
           </a>
-          <span>{workspace.name}</span>
+          <div>
+            <span>{workspace.name}</span>
+            <button type="button" onClick={() => void onSignOut()}>
+              Sign out
+            </button>
+          </div>
         </header>
         <section className="workspace-page">
           <WorkspacePage
