@@ -19,6 +19,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/workspaces/:workspaceId/decks/:deckId"
+  to = "/.netlify/functions/decks?workspaceId=:workspaceId&deckId=:deckId"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
