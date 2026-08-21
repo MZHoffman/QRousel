@@ -9,26 +9,30 @@ function createDependencies(): ActivityHandlerDependencies {
   return {
     authenticate: async () => ({ uid: "account-1" }),
     authorizeWorkspace: async () => ({ role: "viewer" }),
-    listActivity: async () => [],
+    listActivity: async () => ({ activity: [], nextCursor: null }),
   };
 }
 
 test("lets an authenticated viewer read workspace activity", async () => {
   const dependencies = createDependencies();
-  dependencies.listActivity = async (workspaceId) => {
+  dependencies.listActivity = async (workspaceId, cursor) => {
     assert.equal(workspaceId, "workspace-1");
-    return [
-      {
-        id: "activity-1",
-        type: "deck.created",
-        actorUid: "account-1",
-        actorName: "Michał Hoffman",
-        occurredAt: "2026-08-22T08:15:00.000Z",
-        resourceId: "deck-1",
-        resourceName: "Visitor welcome",
-        resourceType: "deck",
-      },
-    ];
+    assert.equal(cursor, null);
+    return {
+      activity: [
+        {
+          id: "activity-1",
+          type: "deck.created",
+          actorUid: "account-1",
+          actorName: "Michał Hoffman",
+          occurredAt: "2026-08-22T08:15:00.000Z",
+          resourceId: "deck-1",
+          resourceName: "Visitor welcome",
+          resourceType: "deck",
+        },
+      ],
+      nextCursor: "next-page",
+    };
   };
   const handler = createActivityHandler(dependencies);
   const response = await handler(
@@ -52,7 +56,23 @@ test("lets an authenticated viewer read workspace activity", async () => {
         resourceType: "deck",
       },
     ],
+    nextCursor: "next-page",
   });
+});
+
+test("passes an opaque cursor to the next activity page", async () => {
+  const dependencies = createDependencies();
+  dependencies.listActivity = async (_workspaceId, cursor) => {
+    assert.equal(cursor, "older-page");
+    return { activity: [], nextCursor: null };
+  };
+  const response = await createActivityHandler(dependencies)(
+    new Request(
+      "https://qrousel.test/api/workspaces/workspace-1/activity?cursor=older-page",
+      { headers: { authorization: "Bearer valid-token" } },
+    ),
+  );
+  assert.deepEqual(await response.json(), { activity: [], nextCursor: null });
 });
 
 test("keeps workspace activity private from unauthenticated users and non-members", async () => {

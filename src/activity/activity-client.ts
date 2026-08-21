@@ -1,7 +1,7 @@
 import type { User } from "firebase/auth";
 import {
   isActivityListResponse,
-  type WorkspaceActivityEntry,
+  type ActivityListResponse,
 } from "../../lib/activity/api-response.ts";
 
 type AuthenticatedUser = Pick<User, "getIdToken">;
@@ -9,9 +9,11 @@ type AuthenticatedUser = Pick<User, "getIdToken">;
 export async function requestWorkspaceActivity(
   user: AuthenticatedUser,
   workspaceId: string,
-): Promise<WorkspaceActivityEntry[]> {
+  cursor: string | null = null,
+): Promise<ActivityListResponse> {
+  const query = cursor === null ? "" : `?cursor=${encodeURIComponent(cursor)}`;
   const response = await fetch(
-    `/api/workspaces/${encodeURIComponent(workspaceId)}/activity`,
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/activity${query}`,
     {
       headers: {
         authorization: `Bearer ${await user.getIdToken()}`,
@@ -19,6 +21,6 @@ export async function requestWorkspaceActivity(
     },
   );
   const body: unknown = await response.json().catch(() => null);
-  if (response.ok && isActivityListResponse(body)) return body.activity;
+  if (response.ok && isActivityListResponse(body)) return body;
   throw new Error("QRousel could not load workspace activity.");
 }
