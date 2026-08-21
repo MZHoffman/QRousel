@@ -1,7 +1,7 @@
-import { getAuth, type DecodedIdToken } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import type { WorkspaceSummary } from "../../lib/workspaces/api-response.ts";
 import { decideWorkspaceCreation } from "../../lib/workspaces/creation.ts";
+import { authenticateActiveAccount } from "./_shared/authenticated-account.ts";
 import { getFirebaseAdminApp } from "./_shared/firebase-admin.ts";
 
 export type AuthenticatedWorkspaceAccount = {
@@ -92,33 +92,9 @@ export function createWorkspaceHandler(dependencies: WorkspaceHandlerDependencie
   };
 }
 
-function isGoogleIdentity(token: DecodedIdToken): boolean {
-  return (
-    token.firebase.sign_in_provider === "google.com" &&
-    token.email_verified === true &&
-    typeof token.email === "string"
-  );
-}
-
 const productionDependencies: WorkspaceHandlerDependencies = {
   async authenticate(idToken) {
-    const token = await getAuth(getFirebaseAdminApp()).verifyIdToken(
-      idToken,
-      true,
-    );
-    if (!isGoogleIdentity(token)) return null;
-
-    const accountSnapshot = await getFirestore(getFirebaseAdminApp())
-      .doc(`accounts/${token.uid}`)
-      .get();
-    if (
-      !accountSnapshot.exists ||
-      accountSnapshot.get("status") !== "active"
-    ) {
-      return null;
-    }
-
-    return { uid: token.uid };
+    return authenticateActiveAccount(idToken);
   },
 
   async listWorkspaces(account) {
