@@ -1,0 +1,403 @@
+import { useEffect, useState, type MouseEvent } from "react";
+import type {
+  WorkspaceRole,
+  WorkspaceSummary,
+} from "../../lib/workspaces/api-response";
+import {
+  WORKSPACE_NAVIGATION,
+  resolveWorkspaceSection,
+  workspaceSectionPath,
+  type WorkspaceSection,
+} from "../../lib/workspaces/navigation";
+
+type WorkspaceShellProps = {
+  workspace: WorkspaceSummary;
+  workspaces: WorkspaceSummary[];
+  userEmail: string | null;
+  onWorkspaceChange: (workspace: WorkspaceSummary) => void;
+  onSignOut: () => Promise<void>;
+};
+
+const RESOURCE_COPY: Record<
+  Exclude<WorkspaceSection, "overview" | "members" | "activity" | "trash">,
+  { eyebrow: string; title: string; description: string; empty: string }
+> = {
+  decks: {
+    eyebrow: "Presentations",
+    title: "Decks",
+    description: "Build, publish, and present collections of reusable slides.",
+    empty: "No decks yet",
+  },
+  slides: {
+    eyebrow: "Reusable content",
+    title: "Slides",
+    description: "Create slides once and use them across every deck.",
+    empty: "No slides yet",
+  },
+  "qr-codes": {
+    eyebrow: "Scannable resources",
+    title: "QR codes",
+    description: "Generate and manage QR codes for this workspace.",
+    empty: "No QR codes yet",
+  },
+  icons: {
+    eyebrow: "Visual library",
+    title: "Icons",
+    description: "Upload and prepare reusable icons for your QR codes.",
+    empty: "No custom icons yet",
+  },
+};
+
+function roleLabel(role: WorkspaceRole): string {
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function NavigationGlyph({ section }: { section: WorkspaceSection }) {
+  const paths: Record<WorkspaceSection, React.ReactNode> = {
+    overview: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </>
+    ),
+    decks: (
+      <>
+        <rect x="3" y="4" width="18" height="14" rx="2" />
+        <path d="M8 21h8" />
+      </>
+    ),
+    slides: (
+      <>
+        <rect x="5" y="3" width="16" height="14" rx="2" />
+        <path d="M3 7v12a2 2 0 0 0 2 2h14" />
+      </>
+    ),
+    "qr-codes": (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14h1" />
+      </>
+    ),
+    icons: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="m8.5 12 2.2 2.2 4.8-5" />
+      </>
+    ),
+    members: (
+      <>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    ),
+    activity: (
+      <>
+        <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+        <path d="M3 3v5h5M12 7v5l3 2" />
+      </>
+    ),
+    trash: (
+      <>
+        <path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v6M14 11v6" />
+      </>
+    ),
+  };
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      {paths[section]}
+    </svg>
+  );
+}
+
+function ResourcePage({
+  section,
+}: {
+  section: keyof typeof RESOURCE_COPY;
+}) {
+  const copy = RESOURCE_COPY[section];
+  return (
+    <>
+      <header className="workspace-page-heading">
+        <div>
+          <p className="workspace-kicker">{copy.eyebrow}</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.description}</p>
+        </div>
+      </header>
+      <section className="workspace-library-empty">
+        <span className="workspace-empty-mark" aria-hidden="true">
+          <NavigationGlyph section={section} />
+        </span>
+        <h2>{copy.empty}</h2>
+        <p>Your workspace library is ready for its first item.</p>
+      </section>
+    </>
+  );
+}
+
+function WorkspacePage({
+  section,
+  workspace,
+  userEmail,
+  navigate,
+}: {
+  section: WorkspaceSection;
+  workspace: WorkspaceSummary;
+  userEmail: string | null;
+  navigate: (section: WorkspaceSection) => void;
+}) {
+  if (section in RESOURCE_COPY) {
+    return (
+      <ResourcePage section={section as keyof typeof RESOURCE_COPY} />
+    );
+  }
+
+  if (section === "members") {
+    return (
+      <>
+        <header className="workspace-page-heading">
+          <div>
+            <p className="workspace-kicker">People and access</p>
+            <h1>Members</h1>
+            <p>Manage who can access this workspace and what they can do.</p>
+          </div>
+        </header>
+        <section className="workspace-list-card">
+          <div className="workspace-member-avatar" aria-hidden="true">
+            {(userEmail?.[0] ?? "U").toUpperCase()}
+          </div>
+          <div>
+            <strong>{userEmail ?? "Current user"}</strong>
+            <span>Original workspace member</span>
+          </div>
+          <span className="workspace-role">{roleLabel(workspace.role)}</span>
+        </section>
+      </>
+    );
+  }
+
+  if (section === "activity") {
+    return (
+      <>
+        <header className="workspace-page-heading">
+          <div>
+            <p className="workspace-kicker">Immutable history</p>
+            <h1>Activity</h1>
+            <p>Review important changes made across this workspace.</p>
+          </div>
+        </header>
+        <section className="workspace-list-card workspace-activity-item">
+          <span className="workspace-activity-dot" aria-hidden="true" />
+          <div>
+            <strong>Workspace created</strong>
+            <span>{workspace.name} is ready to use.</span>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  if (section === "trash") {
+    return (
+      <>
+        <header className="workspace-page-heading">
+          <div>
+            <p className="workspace-kicker">Recovery</p>
+            <h1>Trash</h1>
+            <p>Restore deleted resources before their retention period ends.</p>
+          </div>
+        </header>
+        <section className="workspace-library-empty">
+          <span className="workspace-empty-mark" aria-hidden="true">
+            <NavigationGlyph section="trash" />
+          </span>
+          <h2>Trash is empty</h2>
+          <p>Deleted workspace resources will appear here.</p>
+        </section>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <header className="workspace-page-heading workspace-overview-heading">
+        <div>
+          <p className="workspace-kicker">Workspace overview</p>
+          <h1>{workspace.name}</h1>
+          <p>Your reusable presentation resources, all in one place.</p>
+        </div>
+        <button type="button" onClick={() => navigate("decks")}>
+          New deck <span aria-hidden="true">→</span>
+        </button>
+      </header>
+
+      <section className="workspace-stat-grid" aria-label="Workspace resources">
+        {(["decks", "slides", "qr-codes", "icons"] as const).map((id) => {
+          const item = WORKSPACE_NAVIGATION.find((entry) => entry.id === id);
+          return (
+            <button key={id} type="button" onClick={() => navigate(id)}>
+              <span className="workspace-stat-icon">
+                <NavigationGlyph section={id} />
+              </span>
+              <strong>0</strong>
+              <span>{item?.label}</span>
+            </button>
+          );
+        })}
+      </section>
+
+      <div className="workspace-overview-grid">
+        <section className="workspace-panel workspace-get-started">
+          <p className="workspace-kicker">Get started</p>
+          <h2>Build your first presentation</h2>
+          <p>
+            Decks bring reusable slides, QR codes, and icons together in one
+            polished customer-facing loop.
+          </p>
+          <button type="button" onClick={() => navigate("decks")}>
+            Open decks <span aria-hidden="true">→</span>
+          </button>
+        </section>
+        <section className="workspace-panel">
+          <div className="workspace-panel-heading">
+            <div>
+              <p className="workspace-kicker">Recent activity</p>
+              <h2>Workspace created</h2>
+            </div>
+            <span className="workspace-activity-dot" aria-hidden="true" />
+          </div>
+          <p>{workspace.name} is ready for your content.</p>
+          <button
+            className="workspace-text-button"
+            type="button"
+            onClick={() => navigate("activity")}
+          >
+            View activity
+          </button>
+        </section>
+      </div>
+    </>
+  );
+}
+
+export default function WorkspaceShell({
+  workspace,
+  workspaces,
+  userEmail,
+  onWorkspaceChange,
+  onSignOut,
+}: WorkspaceShellProps) {
+  const [section, setSection] = useState<WorkspaceSection>(() =>
+    resolveWorkspaceSection(window.location.pathname),
+  );
+
+  useEffect(() => {
+    function handleHistoryChange() {
+      setSection(resolveWorkspaceSection(window.location.pathname));
+    }
+    window.addEventListener("popstate", handleHistoryChange);
+    return () => window.removeEventListener("popstate", handleHistoryChange);
+  }, []);
+
+  function navigate(nextSection: WorkspaceSection) {
+    const path = workspaceSectionPath(workspace.id, nextSection);
+    window.history.pushState({}, "", path);
+    setSection(nextSection);
+  }
+
+  function followNavigation(
+    event: MouseEvent<HTMLAnchorElement>,
+    nextSection: WorkspaceSection,
+  ) {
+    event.preventDefault();
+    navigate(nextSection);
+  }
+
+  return (
+    <main className="workspace-app-shell">
+      <aside className="workspace-sidebar">
+        <a className="workspace-brand" href="/">
+          <span className="workspace-brand-mark" aria-hidden="true">
+            Q
+          </span>
+          QRousel
+        </a>
+
+        <label className="workspace-switcher">
+          <span>Workspace</span>
+          <select
+            value={workspace.id}
+            onChange={(event) => {
+              const selected = workspaces.find(
+                (item) => item.id === event.target.value,
+              );
+              if (selected) {
+                setSection("overview");
+                onWorkspaceChange(selected);
+              }
+            }}
+          >
+            {workspaces.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <nav className="workspace-navigation" aria-label="Workspace">
+          {WORKSPACE_NAVIGATION.map((item) => (
+            <a
+              key={item.id}
+              href={workspaceSectionPath(workspace.id, item.id)}
+              aria-current={section === item.id ? "page" : undefined}
+              onClick={(event) => followNavigation(event, item.id)}
+            >
+              <NavigationGlyph section={item.id} />
+              <span>{item.label}</span>
+            </a>
+          ))}
+        </nav>
+
+        <div className="workspace-account">
+          <span className="workspace-account-avatar" aria-hidden="true">
+            {(userEmail?.[0] ?? "U").toUpperCase()}
+          </span>
+          <div>
+            <strong>{userEmail ?? "Signed in"}</strong>
+            <span>{roleLabel(workspace.role)}</span>
+          </div>
+          <button type="button" onClick={() => void onSignOut()}>
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      <div className="workspace-main-column">
+        <header className="workspace-mobile-header">
+          <a className="workspace-brand" href="/">
+            <span className="workspace-brand-mark" aria-hidden="true">
+              Q
+            </span>
+            QRousel
+          </a>
+          <span>{workspace.name}</span>
+        </header>
+        <section className="workspace-page">
+          <WorkspacePage
+            section={section}
+            workspace={workspace}
+            userEmail={userEmail}
+            navigate={navigate}
+          />
+        </section>
+      </div>
+    </main>
+  );
+}
