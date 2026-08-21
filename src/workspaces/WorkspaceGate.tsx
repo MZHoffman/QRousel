@@ -2,9 +2,14 @@ import type { User } from "firebase/auth";
 import { FormEvent, useEffect, useState } from "react";
 import type { WorkspaceSummary } from "../../lib/workspaces/api-response";
 import {
+  workspaceLandingPath,
+  workspaceSectionPath,
+} from "../../lib/workspaces/navigation";
+import {
   requestWorkspaceCreation,
   requestWorkspaces,
 } from "./workspace-client";
+import WorkspaceShell from "./WorkspaceShell";
 
 type WorkspaceGateProps = {
   user: User;
@@ -16,11 +21,15 @@ type WorkspaceState =
   | { kind: "create"; error: string }
   | { kind: "creating" }
   | { kind: "chooser"; workspaces: WorkspaceSummary[] }
-  | { kind: "ready"; workspace: WorkspaceSummary }
+  | {
+      kind: "ready";
+      workspace: WorkspaceSummary;
+      workspaces: WorkspaceSummary[];
+    }
   | { kind: "error"; message: string };
 
 function workspacePath(workspace: WorkspaceSummary): string {
-  return `/app/workspaces/${encodeURIComponent(workspace.id)}`;
+  return workspaceSectionPath(workspace.id, "overview");
 }
 
 function replacePath(path: string) {
@@ -39,8 +48,8 @@ function loadedWorkspaceState(workspaces: WorkspaceSummary[]): {
   if (workspaces.length === 1) {
     const workspace = workspaces[0];
     return {
-      path: workspacePath(workspace),
-      state: { kind: "ready", workspace },
+      path: workspaceLandingPath(workspace.id, window.location.pathname),
+      state: { kind: "ready", workspace, workspaces },
     };
   }
   return { path: "/app", state: { kind: "chooser", workspaces } };
@@ -111,7 +120,11 @@ export default function WorkspaceGate({ user, onSignOut }: WorkspaceGateProps) {
       }
 
       replacePath(workspacePath(result.workspace));
-      setState({ kind: "ready", workspace: result.workspace });
+      setState({
+        kind: "ready",
+        workspace: result.workspace,
+        workspaces: [result.workspace],
+      });
     } catch (error) {
       setState({
         kind: "create",
@@ -123,9 +136,12 @@ export default function WorkspaceGate({ user, onSignOut }: WorkspaceGateProps) {
     }
   }
 
-  function openWorkspace(workspace: WorkspaceSummary) {
+  function openWorkspace(
+    workspace: WorkspaceSummary,
+    workspaces: WorkspaceSummary[],
+  ) {
     replacePath(workspacePath(workspace));
-    setState({ kind: "ready", workspace });
+    setState({ kind: "ready", workspace, workspaces });
   }
 
   if (state.kind === "loading" || state.kind === "creating") {
@@ -215,7 +231,7 @@ export default function WorkspaceGate({ user, onSignOut }: WorkspaceGateProps) {
                 <button
                   key={workspace.id}
                   type="button"
-                  onClick={() => openWorkspace(workspace)}
+                  onClick={() => openWorkspace(workspace, state.workspaces)}
                 >
                   <strong>{workspace.name}</strong>
                   <span>{workspace.role}</span>
@@ -260,38 +276,14 @@ export default function WorkspaceGate({ user, onSignOut }: WorkspaceGateProps) {
   }
 
   return (
-    <main className="workspace-shell">
-      <header className="workspace-header">
-        <a className="auth-brand" href="/">
-          QRousel
-        </a>
-        <div className="workspace-header-actions">
-          <span>{user.email}</span>
-          <button type="button" onClick={() => void onSignOut()}>
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <section className="workspace-dashboard">
-        <p className="auth-eyebrow">Workspace ready</p>
-        <div className="workspace-title-row">
-          <div>
-            <h1>{state.workspace.name}</h1>
-            <p>You are the Founder of this workspace.</p>
-          </div>
-          <span className="workspace-role">Founder</span>
-        </div>
-
-        <div className="workspace-empty-dashboard">
-          <p className="auth-eyebrow">Next up</p>
-          <h2>Create your first deck</h2>
-          <p>
-            Deck, slide, QR code, and icon libraries will be added in the next
-            feature slices.
-          </p>
-        </div>
-      </section>
-    </main>
+    <WorkspaceShell
+      workspace={state.workspace}
+      workspaces={state.workspaces}
+      userEmail={user.email}
+      onWorkspaceChange={(workspace) =>
+        openWorkspace(workspace, state.workspaces)
+      }
+      onSignOut={onSignOut}
+    />
   );
 }
