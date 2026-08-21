@@ -36,6 +36,19 @@ export function workspaceLandingPath(
 ): string {
   const section = resolveWorkspaceSection(currentPathname);
   const expectedPath = workspaceSectionPath(workspaceId, section);
+  const deckPrefix = `${workspaceSectionPath(workspaceId, "decks")}/`;
+  const encodedDeckId = currentPathname.startsWith(deckPrefix)
+    ? currentPathname.slice(deckPrefix.length)
+    : "";
+  if (encodedDeckId.length > 0 && !encodedDeckId.includes("/")) {
+    try {
+      if (decodeURIComponent(encodedDeckId).trim().length > 0) {
+        return currentPathname;
+      }
+    } catch {
+      // Fall through to the workspace overview for malformed paths.
+    }
+  }
   return currentPathname === expectedPath
     ? currentPathname
     : workspaceSectionPath(workspaceId, "overview");
