@@ -1070,6 +1070,31 @@ button {
   text-transform: uppercase;
 }
 
+.deck-editor-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deck-editor-heading-actions button {
+  min-height: 39px;
+  padding: 0 15px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.deck-editor-heading-actions button:disabled,
+.deck-conflict-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .deck-editor-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
@@ -1985,6 +2010,11 @@ label:has(input:focus-visible) {
 
   .deck-editor-readonly {
     justify-self: start;
+  }
+
+  .deck-editor-heading-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .deck-editor-content,

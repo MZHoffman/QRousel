@@ -89,6 +89,17 @@ export function useDeckLibrary(user: User, workspaceId: string) {
     });
   }
 
+  function acceptCreatedDeck(deck: DeckSummary) {
+    setState((current) => ({
+      kind: "ready",
+      workspaceId,
+      decks:
+        current.kind === "ready" && current.workspaceId === workspaceId
+          ? [deck, ...current.decks]
+          : [deck],
+    }));
+  }
+
   return {
     state: currentState,
     decks: currentState.kind === "ready" ? currentState.decks : [],
@@ -96,6 +107,7 @@ export function useDeckLibrary(user: User, workspaceId: string) {
     creationError,
     clearCreationError: () => setCreationError(""),
     create,
+    acceptCreatedDeck,
     acceptUpdatedDeck,
     retry: async () => {
       setState({ kind: "loading", workspaceId });

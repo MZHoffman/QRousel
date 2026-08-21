@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { User } from "firebase/auth";
 import type { DeckSummary } from "../../lib/decks/api-response";
 import type { WorkspaceRole } from "../../lib/workspaces/api-response";
-import { requestDeck, requestDeckUpdate } from "./deck-client";
+import {
+  requestDeck,
+  requestDeckDuplication,
+  requestDeckUpdate,
+} from "./deck-client";
 
 type EditorState =
   | { kind: "loading" }
@@ -15,6 +19,7 @@ type DeckEditorPageProps = {
   deckId: string;
   role: WorkspaceRole;
   onBack: () => void;
+  onDuplicated: (deck: DeckSummary) => void;
   onUpdated: (deck: DeckSummary) => void;
 };
 
@@ -24,12 +29,14 @@ export default function DeckEditorPage({
   deckId,
   role,
   onBack,
+  onDuplicated,
   onUpdated,
 }: DeckEditorPageProps) {
   const [state, setState] = useState<EditorState>({ kind: "loading" });
   const [name, setName] = useState("");
   const [duration, setDuration] = useState("15");
   const [isSaving, setIsSaving] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [conflictDeck, setConflictDeck] = useState<DeckSummary | null>(null);
   const canEdit = role !== "viewer";
@@ -109,6 +116,42 @@ export default function DeckEditorPage({
     }
   }
 
+  async function duplicateDeck(
+    copyName: string,
+    copyDuration: number,
+  ): Promise<void> {
+    if (!canEdit || isDuplicating || state.kind !== "ready") return;
+    setIsDuplicating(true);
+    setSaveError("");
+    try {
+      const result = await requestDeckDuplication(
+        user,
+        workspaceId,
+        deckId,
+        {
+          name: copyName,
+          defaultDisplayDurationSeconds: copyDuration,
+        },
+      );
+      if (result.kind === "limit") {
+        setSaveError(
+          `This workspace can contain up to ${result.limit} decks.`,
+        );
+        return;
+      }
+      setConflictDeck(null);
+      onDuplicated(result.deck);
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "QRousel could not duplicate this deck.",
+      );
+    } finally {
+      setIsDuplicating(false);
+    }
+  }
+
   if (state.kind === "loading") {
     return (
       <section className="deck-editor-status" aria-label="Loading deck">
@@ -144,7 +187,23 @@ export default function DeckEditorPage({
             <span aria-hidden="true"> · </span>Version {state.deck.version}
           </p>
         </div>
-        {!canEdit && <span className="deck-editor-readonly">Read only</span>}
+        <div className="deck-editor-heading-actions">
+          {canEdit && (
+            <button
+              type="button"
+              disabled={isDuplicating || isSaving}
+              onClick={() =>
+                void duplicateDeck(
+                  `${state.deck.name} copy`,
+                  state.deck.defaultDisplayDurationSeconds,
+                )
+              }
+            >
+              {isDuplicating ? "Duplicating…" : "Duplicate deck"}
+            </button>
+          )}
+          {!canEdit && <span className="deck-editor-readonly">Read only</span>}
+        </div>
       </header>
 
       {conflictDeck && (
@@ -167,6 +226,13 @@ export default function DeckEditorPage({
             </div>
           </div>
           <div className="deck-conflict-actions">
+            <button
+              type="button"
+              disabled={!isValid || isDuplicating}
+              onClick={() => void duplicateDeck(name, parsedDuration)}
+            >
+              {isDuplicating ? "Saving copy…" : "Save as copy"}
+            </button>
             <button type="button" onClick={() => applyDeck(conflictDeck)}>
               Reload latest
             </button>
