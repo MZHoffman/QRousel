@@ -9,6 +9,7 @@ type DeckLibraryPageProps = {
   creationOpen: boolean;
   onCreationOpen: () => void;
   onCreationClose: () => void;
+  onOpenDeck: (deckId: string) => void;
 };
 
 export default function DeckLibraryPage({
@@ -17,6 +18,7 @@ export default function DeckLibraryPage({
   creationOpen,
   onCreationOpen,
   onCreationClose,
+  onOpenDeck,
 }: DeckLibraryPageProps) {
   const [query, setQuery] = useState("");
   const [name, setName] = useState("");
@@ -111,7 +113,12 @@ export default function DeckLibraryPage({
           ) : (
             <section className="deck-card-grid" aria-label="Decks">
               {filteredDecks.map((deck) => (
-                <article className="deck-card" key={deck.id}>
+                <button
+                  className="deck-card"
+                  key={deck.id}
+                  type="button"
+                  onClick={() => onOpenDeck(deck.id)}
+                >
                   <div className="deck-card-preview" aria-hidden="true">
                     <span>{deck.slideCount}</span>
                     <small>{deck.slideCount === 1 ? "slide" : "slides"}</small>
@@ -123,7 +130,7 @@ export default function DeckLibraryPage({
                       {deck.defaultDisplayDurationSeconds}s default timing
                     </p>
                   </div>
-                </article>
+                </button>
               ))}
             </section>
           )}
