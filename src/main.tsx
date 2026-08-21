@@ -12,7 +12,8 @@ if (root === null) {
 
 createRoot(root).render(
   <StrictMode>
-    {window.location.pathname === "/sign-in" ? (
+    {window.location.pathname === "/sign-in" ||
+    window.location.pathname.startsWith("/app") ? (
       <Suspense
         fallback={
           <main className="auth-shell" aria-label="Loading sign in" />

@@ -6,6 +6,7 @@ import {
   signOutOfQRousel,
 } from "../../lib/firebase/auth";
 import { isFirebaseClientConfigured } from "../../lib/firebase/client";
+import WorkspaceGate from "../workspaces/WorkspaceGate";
 import { requestAccountAdmission } from "./account-admission-client";
 
 type SessionState =
@@ -120,6 +121,10 @@ export default function SignInPage() {
     await admit(user, () => true);
   }
 
+  if (sessionState === "active" && user !== null) {
+    return <WorkspaceGate user={user} onSignOut={signOutOfQRousel} />;
+  }
+
   return (
     <main className="auth-shell">
       <section className="auth-card" aria-live="polite">
@@ -136,19 +141,6 @@ export default function SignInPage() {
                 : "Preparing your account"}
             </h1>
             <p>This should only take a moment.</p>
-          </div>
-        ) : sessionState === "active" ? (
-          <div className="auth-status">
-            <p className="auth-eyebrow">Account ready</p>
-            <h1>Welcome{user?.displayName ? `, ${user.displayName}` : ""}</h1>
-            <p>{user?.email}</p>
-            <button
-              className="auth-secondary-button"
-              type="button"
-              onClick={() => void signOutOfQRousel()}
-            >
-              Sign out
-            </button>
           </div>
         ) : sessionState === "suspended" ? (
           <div className="auth-status">
