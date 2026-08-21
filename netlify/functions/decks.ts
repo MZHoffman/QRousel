@@ -8,6 +8,7 @@ import {
   type DeckSummary,
 } from "../../lib/decks/api-response.ts";
 import { decideDeckCreation } from "../../lib/decks/creation.ts";
+import { decideDeckDuplication } from "../../lib/decks/duplication.ts";
 import { decideDeckUpdate } from "../../lib/decks/update.ts";
 import {
   WORKSPACE_ROLES,
@@ -28,6 +29,11 @@ export type DeckUpdateResult =
   | { kind: "conflict"; deck: DeckSummary }
   | { kind: "missing" };
 
+export type DeckDuplicationResult =
+  | { kind: "duplicated"; deck: DeckSummary }
+  | { kind: "limit"; limit: number }
+  | { kind: "missing" };
+
 export type DeckHandlerDependencies = {
   authenticate: (idToken: string) => Promise<AuthenticatedDeckAccount | null>;
   authorizeWorkspace: (
@@ -39,6 +45,15 @@ export type DeckHandlerDependencies = {
     workspaceId: string,
     requestedName: string,
   ) => Promise<DeckCreationResult>;
+  duplicateDeck: (
+    account: AuthenticatedDeckAccount,
+    workspaceId: string,
+    sourceDeckId: string,
+    input: {
+      name: string;
+      defaultDisplayDurationSeconds: number;
+    },
+  ) => Promise<DeckDuplicationResult>;
   getDeck: (
     account: AuthenticatedDeckAccount,
     workspaceId: string,
@@ -78,21 +93,33 @@ function readBearerToken(request: Request): string | null {
 
 function readDeckRoute(
   request: Request,
-): { workspaceId: string; deckId: string | null } | null {
+): {
+  workspaceId: string;
+  deckId: string | null;
+  action: "duplicate" | null;
+} | null {
   const url = new URL(request.url);
   const queryId = url.searchParams.get("workspaceId")?.trim();
   const queryDeckId = url.searchParams.get("deckId")?.trim() || null;
-  if (queryId) return { workspaceId: queryId, deckId: queryDeckId };
+  const queryAction =
+    url.searchParams.get("action") === "duplicate" ? "duplicate" : null;
+  if (queryId) {
+    return { workspaceId: queryId, deckId: queryDeckId, action: queryAction };
+  }
 
   const match = url.pathname.match(
-    /^\/api\/workspaces\/([^/]+)\/decks(?:\/([^/]+))?$/,
+    /^\/api\/workspaces\/([^/]+)\/decks(?:\/([^/]+)(?:\/(duplicate))?)?$/,
   );
   if (!match?.[1]) return null;
   try {
     const workspaceId = decodeURIComponent(match[1]).trim();
     const deckId = match[2] ? decodeURIComponent(match[2]).trim() : null;
     return workspaceId.length > 0 && (!match[2] || deckId)
-      ? { workspaceId, deckId }
+      ? {
+          workspaceId,
+          deckId,
+          action: match[3] === "duplicate" ? "duplicate" : null,
+        }
       : null;
   } catch {
     return null;
@@ -115,7 +142,7 @@ export function createDeckHandler(dependencies: DeckHandlerDependencies) {
     if (route === null) {
       return jsonResponse({ error: "A workspace is required." }, 400);
     }
-    const { workspaceId, deckId } = route;
+    const { workspaceId, deckId, action } = route;
 
     const access = await dependencies.authorizeWorkspace(account, workspaceId);
     if (access === null) {
@@ -154,6 +181,52 @@ export function createDeckHandler(dependencies: DeckHandlerDependencies) {
         workspaceId,
         body.name,
       );
+      if (result.kind === "limit") {
+        return jsonResponse(
+          { status: "limit_reached", limit: result.limit },
+          409,
+        );
+      }
+      return jsonResponse({ deck: result.deck }, 201);
+    }
+
+    if (
+      request.method === "POST" &&
+      deckId !== null &&
+      action === "duplicate"
+    ) {
+      if (access.role === "viewer") {
+        return jsonResponse({ error: "Editing access required." }, 403);
+      }
+
+      const body: unknown = await request.json().catch(() => null);
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("name" in body) ||
+        typeof body.name !== "string" ||
+        body.name.trim().length === 0 ||
+        !("defaultDisplayDurationSeconds" in body) ||
+        !Number.isSafeInteger(body.defaultDisplayDurationSeconds) ||
+        Number(body.defaultDisplayDurationSeconds) < 1
+      ) {
+        return jsonResponse({ error: "Valid copy settings are required." }, 400);
+      }
+
+      const result = await dependencies.duplicateDeck(
+        account,
+        workspaceId,
+        deckId,
+        {
+          name: body.name,
+          defaultDisplayDurationSeconds: Number(
+            body.defaultDisplayDurationSeconds,
+          ),
+        },
+      );
+      if (result.kind === "missing") {
+        return jsonResponse({ error: "Deck not found." }, 404);
+      }
       if (result.kind === "limit") {
         return jsonResponse(
           { status: "limit_reached", limit: result.limit },
@@ -305,6 +378,93 @@ const productionDependencies: DeckHandlerDependencies = {
       .doc(`workspaces/${workspaceId}/decks/${deckId}`)
       .get();
     return deckSummaryFromSnapshot(snapshot);
+  },
+
+  async duplicateDeck(account, workspaceId, sourceDeckId, input) {
+    const firestore = getFirestore(getFirebaseAdminApp());
+    const workspaceRef = firestore.doc(`workspaces/${workspaceId}`);
+    const membershipRef = firestore.doc(
+      `workspaceMemberships/${workspaceId}_${account.uid}`,
+    );
+    const sourceDeckRef = workspaceRef.collection("decks").doc(sourceDeckId);
+    const duplicateDeckRef = workspaceRef.collection("decks").doc();
+    const activityRef = workspaceRef.collection("activity").doc();
+
+    return firestore.runTransaction(async (transaction) => {
+      const membershipSnapshot = await transaction.get(membershipRef);
+      const workspaceSnapshot = await transaction.get(workspaceRef);
+      const sourceDeckSnapshot = await transaction.get(sourceDeckRef);
+      const role = membershipSnapshot.get("role");
+      if (
+        !membershipSnapshot.exists ||
+        membershipSnapshot.get("status") !== "active" ||
+        !isWorkspaceRole(role) ||
+        !isEditingRole(role) ||
+        !workspaceSnapshot.exists ||
+        workspaceSnapshot.get("status") !== "active"
+      ) {
+        throw new Error("Workspace editing access is unavailable.");
+      }
+
+      const sourceDeck = deckSummaryFromSnapshot(sourceDeckSnapshot);
+      if (sourceDeck === null) {
+        return { kind: "missing" as const };
+      }
+
+      const decision = decideDeckDuplication({
+        deckCount: workspaceSnapshot.get("deckCount") ?? 0,
+        sourceName: sourceDeck.name,
+        sourceDefaultDisplayDurationSeconds:
+          sourceDeck.defaultDisplayDurationSeconds,
+        requestedName: input.name,
+        requestedDefaultDisplayDurationSeconds:
+          input.defaultDisplayDurationSeconds,
+      });
+      if (decision.kind === "limit") return decision;
+
+      const now = FieldValue.serverTimestamp();
+      transaction.update(workspaceRef, {
+        deckCount: decision.nextDeckCount,
+        updatedAt: now,
+      });
+      transaction.set(duplicateDeckRef, {
+        createdAt: now,
+        createdBy: account.uid,
+        defaultDisplayDurationSeconds:
+          decision.defaultDisplayDurationSeconds,
+        name: decision.name,
+        publicationStatus: decision.publicationStatus,
+        slideCount: decision.slideCount,
+        sourceDeckId,
+        status: "active",
+        updatedAt: now,
+        version: decision.version,
+        workspaceId,
+      });
+      transaction.set(activityRef, {
+        actorUid: account.uid,
+        createdAt: now,
+        resourceId: duplicateDeckRef.id,
+        resourceName: decision.name,
+        resourceType: "deck",
+        sourceResourceId: sourceDeckId,
+        type: "deck.duplicated",
+        workspaceId,
+      });
+
+      return {
+        kind: "duplicated" as const,
+        deck: {
+          id: duplicateDeckRef.id,
+          name: decision.name,
+          publicationStatus: decision.publicationStatus,
+          defaultDisplayDurationSeconds:
+            decision.defaultDisplayDurationSeconds,
+          slideCount: decision.slideCount,
+          version: decision.version,
+        },
+      };
+    });
   },
 
   async createDeck(account, workspaceId, requestedName) {
