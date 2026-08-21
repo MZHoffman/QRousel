@@ -1,8 +1,11 @@
 import { useEffect, useState, type MouseEvent } from "react";
+import type { User } from "firebase/auth";
 import type {
   WorkspaceRole,
   WorkspaceSummary,
 } from "../../lib/workspaces/api-response";
+import DeckLibraryPage from "../decks/DeckLibraryPage";
+import { useDeckLibrary } from "../decks/use-deck-library";
 import {
   WORKSPACE_NAVIGATION,
   resolveWorkspaceSection,
@@ -13,21 +16,18 @@ import {
 type WorkspaceShellProps = {
   workspace: WorkspaceSummary;
   workspaces: WorkspaceSummary[];
-  userEmail: string | null;
+  user: User;
   onWorkspaceChange: (workspace: WorkspaceSummary) => void;
   onSignOut: () => Promise<void>;
 };
 
 const RESOURCE_COPY: Record<
-  Exclude<WorkspaceSection, "overview" | "members" | "activity" | "trash">,
+  Exclude<
+    WorkspaceSection,
+    "overview" | "decks" | "members" | "activity" | "trash"
+  >,
   { eyebrow: string; title: string; description: string; empty: string }
 > = {
-  decks: {
-    eyebrow: "Presentations",
-    title: "Decks",
-    description: "Build, publish, and present collections of reusable slides.",
-    empty: "No decks yet",
-  },
   slides: {
     eyebrow: "Reusable content",
     title: "Slides",
@@ -146,12 +146,32 @@ function WorkspacePage({
   workspace,
   userEmail,
   navigate,
+  deckLibrary,
+  deckCreationOpen,
+  onDeckCreationOpen,
+  onDeckCreationClose,
 }: {
   section: WorkspaceSection;
   workspace: WorkspaceSummary;
   userEmail: string | null;
   navigate: (section: WorkspaceSection) => void;
+  deckLibrary: ReturnType<typeof useDeckLibrary>;
+  deckCreationOpen: boolean;
+  onDeckCreationOpen: () => void;
+  onDeckCreationClose: () => void;
 }) {
+  if (section === "decks") {
+    return (
+      <DeckLibraryPage
+        library={deckLibrary}
+        role={workspace.role}
+        creationOpen={deckCreationOpen}
+        onCreationOpen={onDeckCreationOpen}
+        onCreationClose={onDeckCreationClose}
+      />
+    );
+  }
+
   if (section in RESOURCE_COPY) {
     return (
       <ResourcePage section={section as keyof typeof RESOURCE_COPY} />
@@ -232,20 +252,28 @@ function WorkspacePage({
           <h1>{workspace.name}</h1>
           <p>Your reusable presentation resources, all in one place.</p>
         </div>
-        <button type="button" onClick={() => navigate("decks")}>
-          New deck <span aria-hidden="true">→</span>
-        </button>
+        {workspace.role !== "viewer" && (
+          <button type="button" onClick={onDeckCreationOpen}>
+            New deck <span aria-hidden="true">→</span>
+          </button>
+        )}
       </header>
 
       <section className="workspace-stat-grid" aria-label="Workspace resources">
         {(["decks", "slides", "qr-codes", "icons"] as const).map((id) => {
           const item = WORKSPACE_NAVIGATION.find((entry) => entry.id === id);
+          const count =
+            id === "decks"
+              ? deckLibrary.state.kind === "ready"
+                ? deckLibrary.decks.length
+                : "—"
+              : 0;
           return (
             <button key={id} type="button" onClick={() => navigate(id)}>
               <span className="workspace-stat-icon">
                 <NavigationGlyph section={id} />
               </span>
-              <strong>0</strong>
+              <strong>{count}</strong>
               <span>{item?.label}</span>
             </button>
           );
@@ -260,7 +288,7 @@ function WorkspacePage({
             Decks bring reusable slides, QR codes, and icons together in one
             polished customer-facing loop.
           </p>
-          <button type="button" onClick={() => navigate("decks")}>
+          <button type="button" onClick={onDeckCreationOpen}>
             Open decks <span aria-hidden="true">→</span>
           </button>
         </section>
@@ -289,13 +317,15 @@ function WorkspacePage({
 export default function WorkspaceShell({
   workspace,
   workspaces,
-  userEmail,
+  user,
   onWorkspaceChange,
   onSignOut,
 }: WorkspaceShellProps) {
   const [section, setSection] = useState<WorkspaceSection>(() =>
     resolveWorkspaceSection(window.location.pathname),
   );
+  const [deckCreationOpen, setDeckCreationOpen] = useState(false);
+  const deckLibrary = useDeckLibrary(user, workspace.id);
 
   useEffect(() => {
     function handleHistoryChange() {
@@ -309,6 +339,16 @@ export default function WorkspaceShell({
     const path = workspaceSectionPath(workspace.id, nextSection);
     window.history.pushState({}, "", path);
     setSection(nextSection);
+  }
+
+  function openDeckCreation() {
+    if (workspace.role === "viewer") {
+      navigate("decks");
+      return;
+    }
+    if (section !== "decks") navigate("decks");
+    deckLibrary.clearCreationError();
+    setDeckCreationOpen(true);
   }
 
   function followNavigation(
@@ -339,6 +379,7 @@ export default function WorkspaceShell({
               );
               if (selected) {
                 setSection("overview");
+                setDeckCreationOpen(false);
                 onWorkspaceChange(selected);
               }
             }}
@@ -367,10 +408,10 @@ export default function WorkspaceShell({
 
         <div className="workspace-account">
           <span className="workspace-account-avatar" aria-hidden="true">
-            {(userEmail?.[0] ?? "U").toUpperCase()}
+            {(user.email?.[0] ?? "U").toUpperCase()}
           </span>
           <div>
-            <strong>{userEmail ?? "Signed in"}</strong>
+            <strong>{user.email ?? "Signed in"}</strong>
             <span>{roleLabel(workspace.role)}</span>
           </div>
           <button type="button" onClick={() => void onSignOut()}>
@@ -398,8 +439,12 @@ export default function WorkspaceShell({
           <WorkspacePage
             section={section}
             workspace={workspace}
-            userEmail={userEmail}
+            userEmail={user.email}
             navigate={navigate}
+            deckLibrary={deckLibrary}
+            deckCreationOpen={deckCreationOpen}
+            onDeckCreationOpen={openDeckCreation}
+            onDeckCreationClose={() => setDeckCreationOpen(false)}
           />
         </section>
       </div>

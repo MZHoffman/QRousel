@@ -279,7 +279,7 @@ export default function WorkspaceGate({ user, onSignOut }: WorkspaceGateProps) {
     <WorkspaceShell
       workspace={state.workspace}
       workspaces={state.workspaces}
-      userEmail={user.email}
+      user={user}
       onWorkspaceChange={(workspace) =>
         openWorkspace(workspace, state.workspaces)
       }
