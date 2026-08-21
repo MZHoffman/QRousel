@@ -18,6 +18,7 @@ test("accepts a workspace activity feed with actor and resource details", () => 
           changedFields: ["name", "defaultDisplayDurationSeconds"],
         },
       ],
+      nextCursor: "older-page",
     }),
     true,
   );
@@ -38,6 +39,7 @@ test("rejects unsupported or malformed activity entries", () => {
           resourceType: "deck",
         },
       ],
+      nextCursor: null,
     }),
     false,
   );

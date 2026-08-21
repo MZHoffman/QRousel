@@ -22,6 +22,7 @@ export type WorkspaceActivityEntry = {
 
 export type ActivityListResponse = {
   activity: WorkspaceActivityEntry[];
+  nextCursor: string | null;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -62,6 +63,8 @@ export function isActivityListResponse(
   return (
     isRecord(value) &&
     Array.isArray(value.activity) &&
-    value.activity.every(isActivityEntry)
+    value.activity.every(isActivityEntry) &&
+    (value.nextCursor === null ||
+      (typeof value.nextCursor === "string" && value.nextCursor.length > 0))
   );
 }
