@@ -43,5 +43,10 @@ export function describeWorkspaceActivity(
         title: "Slide updated",
         detail: `${entry.actorName} updated ${namedResource(entry)}.`,
       };
+    case "qr-code.created":
+      return {
+        title: "QR code created",
+        detail: `${entry.actorName} created ${namedResource(entry)}.`,
+      };
   }
 }

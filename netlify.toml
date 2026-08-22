@@ -44,6 +44,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/workspaces/:workspaceId/qr-codes"
+  to = "/.netlify/functions/qr-codes?workspaceId=:workspaceId"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

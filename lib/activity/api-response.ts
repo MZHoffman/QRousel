@@ -5,6 +5,7 @@ export const WORKSPACE_ACTIVITY_TYPES = [
   "deck.duplicated",
   "slide.created",
   "slide.updated",
+  "qr-code.created",
 ] as const;
 
 export type WorkspaceActivityType =
@@ -18,7 +19,7 @@ export type WorkspaceActivityEntry = {
   occurredAt: string;
   resourceId: string;
   resourceName: string | null;
-  resourceType: "workspace" | "deck" | "slide";
+  resourceType: "workspace" | "deck" | "slide" | "qr-code";
   changedFields?: string[];
 };
 
@@ -54,7 +55,8 @@ function isActivityEntry(value: unknown): value is WorkspaceActivityEntry {
     (value.resourceName === null || typeof value.resourceName === "string") &&
     (value.resourceType === "workspace" ||
       value.resourceType === "deck" ||
-      value.resourceType === "slide") &&
+      value.resourceType === "slide" ||
+      value.resourceType === "qr-code") &&
     (value.changedFields === undefined ||
       (Array.isArray(value.changedFields) &&
         value.changedFields.every((field) => typeof field === "string")))
