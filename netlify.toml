@@ -34,6 +34,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/workspaces/:workspaceId/slides"
+  to = "/.netlify/functions/slides?workspaceId=:workspaceId"
+  status = 200
+
+[[redirects]]
+  from = "/api/workspaces/:workspaceId/slides/:slideId"
+  to = "/.netlify/functions/slides?workspaceId=:workspaceId&slideId=:slideId"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

@@ -33,5 +33,15 @@ export function describeWorkspaceActivity(
         title: "Deck duplicated",
         detail: `${entry.actorName} created the copy ${namedResource(entry)}.`,
       };
+    case "slide.created":
+      return {
+        title: "Slide created",
+        detail: `${entry.actorName} created ${namedResource(entry)}.`,
+      };
+    case "slide.updated":
+      return {
+        title: "Slide updated",
+        detail: `${entry.actorName} updated ${namedResource(entry)}.`,
+      };
   }
 }
