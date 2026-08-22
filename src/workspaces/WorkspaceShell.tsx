@@ -8,6 +8,8 @@ import ActivityPage from "../activity/ActivityPage";
 import DeckLibraryPage from "../decks/DeckLibraryPage";
 import DeckEditorPage from "../decks/DeckEditorPage";
 import { useDeckLibrary } from "../decks/use-deck-library";
+import SlideLibraryPage from "../slides/SlideLibraryPage";
+import { useSlideLibrary } from "../slides/use-slide-library";
 import {
   resolveWorkspaceDeckId,
   workspaceDeckPath,
@@ -153,6 +155,7 @@ function WorkspacePage({
   userEmail,
   navigate,
   deckLibrary,
+  slideLibrary,
   deckCreationOpen,
   onDeckCreationOpen,
   onDeckCreationClose,
@@ -165,6 +168,7 @@ function WorkspacePage({
   userEmail: string | null;
   navigate: (section: WorkspaceSection) => void;
   deckLibrary: ReturnType<typeof useDeckLibrary>;
+  slideLibrary: ReturnType<typeof useSlideLibrary>;
   deckCreationOpen: boolean;
   onDeckCreationOpen: () => void;
   onDeckCreationClose: () => void;
@@ -199,6 +203,10 @@ function WorkspacePage({
         onOpenDeck={onOpenDeck}
       />
     );
+  }
+
+  if (section === "slides") {
+    return <SlideLibraryPage library={slideLibrary} role={workspace.role} />;
   }
 
   if (section in RESOURCE_COPY) {
@@ -279,7 +287,11 @@ function WorkspacePage({
               ? deckLibrary.state.kind === "ready"
                 ? deckLibrary.decks.length
                 : "—"
-              : 0;
+              : id === "slides"
+                ? slideLibrary.state.kind === "ready"
+                  ? slideLibrary.slides.length
+                  : "—"
+                : 0;
           return (
             <button key={id} type="button" onClick={() => navigate(id)}>
               <span className="workspace-stat-icon">
@@ -341,6 +353,7 @@ export default function WorkspaceShell({
     resolveWorkspaceDeckId(window.location.pathname, workspace.id),
   );
   const deckLibrary = useDeckLibrary(user, workspace.id);
+  const slideLibrary = useSlideLibrary(user, workspace.id);
 
   useEffect(() => {
     function handleHistoryChange() {
@@ -473,6 +486,7 @@ export default function WorkspaceShell({
             userEmail={user.email}
             navigate={navigate}
             deckLibrary={deckLibrary}
+            slideLibrary={slideLibrary}
             deckCreationOpen={deckCreationOpen}
             onDeckCreationOpen={openDeckCreation}
             onDeckCreationClose={() => setDeckCreationOpen(false)}
