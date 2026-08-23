@@ -7,6 +7,7 @@ import type { useSlideLibrary } from "./use-slide-library";
 type SlideLibraryPageProps = {
   library: ReturnType<typeof useSlideLibrary>;
   role: WorkspaceRole;
+  onCreatePage: () => void;
 };
 
 type EditorState =
@@ -17,6 +18,7 @@ type EditorState =
 export default function SlideLibraryPage({
   library,
   role,
+  onCreatePage,
 }: SlideLibraryPageProps) {
   const [query, setQuery] = useState("");
   const [editor, setEditor] = useState<EditorState>({ kind: "closed" });
@@ -32,13 +34,6 @@ export default function SlideLibraryPage({
         .includes(normalizedQuery),
     );
   }, [library.slides, query]);
-
-  function openCreate() {
-    library.clearSaveError();
-    setTitle("");
-    setDescription("");
-    setEditor({ kind: "create" });
-  }
 
   function openEdit(slide: SlideSummary) {
     library.clearSaveError();
@@ -84,7 +79,7 @@ export default function SlideLibraryPage({
           <p>Create slides once and use them across every deck.</p>
         </div>
         {canEdit && (
-          <button type="button" onClick={openCreate}>
+          <button type="button" onClick={onCreatePage}>
             New slide <span aria-hidden="true">→</span>
           </button>
         )}
@@ -131,7 +126,7 @@ export default function SlideLibraryPage({
           <h2>No slides yet</h2>
           <p>Create a reusable slide, then add it to any deck later.</p>
           {canEdit && (
-            <button className="deck-empty-action" type="button" onClick={openCreate}>
+            <button className="deck-empty-action" type="button" onClick={onCreatePage}>
               Create your first slide
             </button>
           )}

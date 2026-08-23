@@ -10,6 +10,7 @@ import DeckEditorPage from "../decks/DeckEditorPage";
 import DeckCreatePage from "../decks/DeckCreatePage";
 import { useDeckLibrary } from "../decks/use-deck-library";
 import SlideLibraryPage from "../slides/SlideLibraryPage";
+import SlideCreatePage from "../slides/SlideCreatePage";
 import { useSlideLibrary } from "../slides/use-slide-library";
 import QrCodeLibraryPage from "../qr-codes/QrCodeLibraryPage";
 import { useQrCodeLibrary } from "../qr-codes/use-qr-code-library";
@@ -25,6 +26,10 @@ import {
   workspaceSectionPath,
   type WorkspaceSection,
 } from "../../lib/workspaces/navigation";
+import {
+  resolveWorkspaceResourceEditor,
+  workspaceResourceEditorPath,
+} from "../../lib/workspaces/resource-editor-navigation";
 
 type WorkspaceShellProps = {
   workspace: WorkspaceSummary;
@@ -218,7 +223,31 @@ function WorkspacePage({
   }
 
   if (section === "slides") {
-    return <SlideLibraryPage library={slideLibrary} role={workspace.role} />;
+    const editor = resolveWorkspaceResourceEditor(
+      window.location.pathname,
+      workspace.id,
+      "slides",
+    );
+    if (editor?.mode === "new") {
+      return (
+        <SlideCreatePage
+          library={slideLibrary}
+          role={workspace.role}
+          onBack={() => navigate("slides")}
+        />
+      );
+    }
+    return (
+      <SlideLibraryPage
+        library={slideLibrary}
+        role={workspace.role}
+        onCreatePage={() => {
+          window.location.assign(
+            workspaceResourceEditorPath(workspace.id, "slides", "new"),
+          );
+        }}
+      />
+    );
   }
   if (section === "qr-codes") {
     return <QrCodeLibraryPage library={qrCodeLibrary} role={workspace.role} />;
