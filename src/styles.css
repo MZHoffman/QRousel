@@ -1089,6 +1089,15 @@ button {
   image-rendering: pixelated;
 }
 
+.icon-card-image,
+.icon-crop-preview {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: rgba(30, 107, 75, 0.08);
+}
+
 .deck-dialog form select {
   min-height: 48px;
   padding: 0 14px;
