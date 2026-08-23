@@ -45,8 +45,8 @@ export function useDeckLibrary(user: User, workspaceId: string) {
       ? state
       : { kind: "loading", workspaceId };
 
-  async function create(name: string): Promise<boolean> {
-    if (isCreating) return false;
+  async function create(name: string): Promise<DeckSummary | null> {
+    if (isCreating) return null;
     const existingDecks =
       currentState.kind === "ready" ? currentState.decks : [];
     setIsCreating(true);
@@ -55,21 +55,21 @@ export function useDeckLibrary(user: User, workspaceId: string) {
       const result = await requestDeckCreation(user, workspaceId, name);
       if (result.kind === "limit") {
         setCreationError(`This workspace can contain up to ${result.limit} decks.`);
-        return false;
+        return null;
       }
       setState({
         kind: "ready",
         workspaceId,
         decks: [result.deck, ...existingDecks],
       });
-      return true;
+      return result.deck;
     } catch (error) {
       setCreationError(
         error instanceof Error
           ? error.message
           : "QRousel could not create this deck.",
       );
-      return false;
+      return null;
     } finally {
       setIsCreating(false);
     }
