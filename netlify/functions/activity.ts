@@ -143,7 +143,8 @@ function activityEntryFromSnapshot(
     (resourceType !== "workspace" &&
       resourceType !== "deck" &&
       resourceType !== "slide" &&
-      resourceType !== "qr-code") ||
+      resourceType !== "qr-code" &&
+      resourceType !== "icon") ||
     (changedFields !== undefined &&
       (!Array.isArray(changedFields) ||
         !changedFields.every((field) => typeof field === "string")))
