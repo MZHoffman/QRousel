@@ -7,6 +7,7 @@ import type {
 import ActivityPage from "../activity/ActivityPage";
 import DeckLibraryPage from "../decks/DeckLibraryPage";
 import DeckEditorPage from "../decks/DeckEditorPage";
+import DeckCreatePage from "../decks/DeckCreatePage";
 import { useDeckLibrary } from "../decks/use-deck-library";
 import SlideLibraryPage from "../slides/SlideLibraryPage";
 import { useSlideLibrary } from "../slides/use-slide-library";
@@ -186,6 +187,9 @@ function WorkspacePage({
 }) {
   if (section === "decks") {
     if (selectedDeckId !== null) {
+      if (selectedDeckId === "new") {
+        return <DeckCreatePage library={deckLibrary} role={workspace.role} onBack={() => navigate("decks")} onCreated={onOpenDeck} />;
+      }
       return (
         <DeckEditorPage
           user={user}
@@ -405,9 +409,8 @@ export default function WorkspaceShell({
       navigate("decks");
       return;
     }
-    if (section !== "decks") navigate("decks");
     deckLibrary.clearCreationError();
-    setDeckCreationOpen(true);
+    openDeck("new");
   }
 
   function followNavigation(
