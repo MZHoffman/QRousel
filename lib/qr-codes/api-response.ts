@@ -2,6 +2,7 @@ export type QrCodeSummary = {
   id: string;
   name: string;
   content: string;
+  kind: "url" | "email" | "phone" | "wifi" | "text";
   color: string;
   version: number;
   revision: number;
@@ -17,6 +18,7 @@ function qrCode(value: unknown): value is QrCodeSummary {
     typeof value.id === "string" &&
     typeof value.name === "string" &&
     typeof value.content === "string" &&
+    (value.kind === "url" || value.kind === "email" || value.kind === "phone" || value.kind === "wifi" || value.kind === "text") &&
     typeof value.color === "string" &&
     Number.isSafeInteger(value.version) &&
     Number.isSafeInteger(value.revision)

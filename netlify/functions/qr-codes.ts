@@ -62,9 +62,10 @@ function role(value: unknown): value is WorkspaceRole {
   return typeof value === "string" && WORKSPACE_ROLES.includes(value as WorkspaceRole);
 }
 function summary(snapshot: DocumentSnapshot): QrCodeSummary | null {
-  const name = snapshot.get("name"), content = snapshot.get("content"), color = snapshot.get("color"), version = snapshot.get("version"), revision = snapshot.get("revision") ?? 1;
+  const name = snapshot.get("name"), content = snapshot.get("content"), color = snapshot.get("color"), version = snapshot.get("version"), revision = snapshot.get("revision") ?? 1, storedKind = snapshot.get("kind");
+  const kind: QrCodeKind = QR_CODE_KINDS.includes(storedKind as QrCodeKind) ? storedKind as QrCodeKind : typeof content === "string" && content.startsWith("mailto:") ? "email" : typeof content === "string" && content.startsWith("tel:") ? "phone" : typeof content === "string" && content.startsWith("WIFI:") ? "wifi" : typeof content === "string" && /^https?:\/\//i.test(content) ? "url" : "text";
   return snapshot.exists && snapshot.get("status") === "active" && typeof name === "string" && typeof content === "string" && typeof color === "string" && Number.isSafeInteger(version) && Number.isSafeInteger(revision)
-    ? { id: snapshot.id, name, content, color, version, revision } : null;
+    ? { id: snapshot.id, name, content, kind, color, version, revision } : null;
 }
 const production: Dependencies = {
   authenticate: authenticateActiveAccount,
@@ -88,9 +89,9 @@ const production: Dependencies = {
       if (decision.kind === "limit") return decision;
       const now = FieldValue.serverTimestamp();
       transaction.update(workspace, { qrCodeCount: decision.nextQrCodeCount, updatedAt: now });
-      transaction.set(code, { name: decision.name, content: decision.content, color: decision.color, version: decision.version, revision: 1, status: "active", workspaceId, createdAt: now, createdBy: account.uid, updatedAt: now });
+      transaction.set(code, { name: decision.name, content: decision.content, kind: requested.kind, color: decision.color, version: decision.version, revision: 1, status: "active", workspaceId, createdAt: now, createdBy: account.uid, updatedAt: now });
       transaction.set(activity, { type: "qr-code.created", actorUid: account.uid, createdAt: now, resourceId: code.id, resourceName: decision.name, resourceType: "qr-code", workspaceId });
-      return { kind: "created" as const, qrCode: { id: code.id, name: decision.name, content: decision.content, color: decision.color, version: decision.version, revision: 1 } };
+      return { kind: "created" as const, qrCode: { id: code.id, name: decision.name, content: decision.content, kind: requested.kind, color: decision.color, version: decision.version, revision: 1 } };
     });
   },
 };
