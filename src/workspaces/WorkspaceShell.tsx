@@ -12,6 +12,8 @@ import SlideLibraryPage from "../slides/SlideLibraryPage";
 import { useSlideLibrary } from "../slides/use-slide-library";
 import QrCodeLibraryPage from "../qr-codes/QrCodeLibraryPage";
 import { useQrCodeLibrary } from "../qr-codes/use-qr-code-library";
+import IconLibraryPage from "../icons/IconLibraryPage";
+import { useIconLibrary } from "../icons/use-icon-library";
 import {
   resolveWorkspaceDeckId,
   workspaceDeckPath,
@@ -159,6 +161,7 @@ function WorkspacePage({
   deckLibrary,
   slideLibrary,
   qrCodeLibrary,
+  iconLibrary,
   deckCreationOpen,
   onDeckCreationOpen,
   onDeckCreationClose,
@@ -173,6 +176,7 @@ function WorkspacePage({
   deckLibrary: ReturnType<typeof useDeckLibrary>;
   slideLibrary: ReturnType<typeof useSlideLibrary>;
   qrCodeLibrary: ReturnType<typeof useQrCodeLibrary>;
+  iconLibrary: ReturnType<typeof useIconLibrary>;
   deckCreationOpen: boolean;
   onDeckCreationOpen: () => void;
   onDeckCreationClose: () => void;
@@ -215,6 +219,7 @@ function WorkspacePage({
   if (section === "qr-codes") {
     return <QrCodeLibraryPage library={qrCodeLibrary} role={workspace.role} />;
   }
+  if (section === "icons") return <IconLibraryPage library={iconLibrary} role={workspace.role} />;
 
   if (section in RESOURCE_COPY) {
     return (
@@ -300,7 +305,7 @@ function WorkspacePage({
                   : "—"
                 : id === "qr-codes"
                   ? qrCodeLibrary.status === "ready" ? qrCodeLibrary.codes.length : "—"
-                  : 0;
+                  : id === "icons" ? iconLibrary.state === "ready" ? iconLibrary.icons.length : "—" : 0;
           return (
             <button key={id} type="button" onClick={() => navigate(id)}>
               <span className="workspace-stat-icon">
@@ -364,6 +369,7 @@ export default function WorkspaceShell({
   const deckLibrary = useDeckLibrary(user, workspace.id);
   const slideLibrary = useSlideLibrary(user, workspace.id);
   const qrCodeLibrary = useQrCodeLibrary(user, workspace.id);
+  const iconLibrary = useIconLibrary(user, workspace.id);
 
   useEffect(() => {
     function handleHistoryChange() {
@@ -498,6 +504,7 @@ export default function WorkspaceShell({
             deckLibrary={deckLibrary}
             slideLibrary={slideLibrary}
             qrCodeLibrary={qrCodeLibrary}
+            iconLibrary={iconLibrary}
             deckCreationOpen={deckCreationOpen}
             onDeckCreationOpen={openDeckCreation}
             onDeckCreationClose={() => setDeckCreationOpen(false)}

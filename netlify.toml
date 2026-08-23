@@ -49,6 +49,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/workspaces/:workspaceId/icons"
+  to = "/.netlify/functions/icons?workspaceId=:workspaceId"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
