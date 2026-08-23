@@ -1,7 +1,7 @@
 import { StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
 import SignInPage from "./auth/LazySignInPage";
+import LandingPage from "./marketing/LandingPage";
 import "./styles.css";
 
 const root = document.getElementById("root");
@@ -12,8 +12,7 @@ if (root === null) {
 
 createRoot(root).render(
   <StrictMode>
-    {window.location.pathname === "/sign-in" ||
-    window.location.pathname.startsWith("/app") ? (
+    {window.location.pathname === "/sign-in" || window.location.pathname.startsWith("/app") ? (
       <Suspense
         fallback={
           <main className="auth-shell" aria-label="Loading sign in" />
@@ -22,7 +21,7 @@ createRoot(root).render(
         <SignInPage />
       </Suspense>
     ) : (
-      <App />
+      <LandingPage />
     )}
   </StrictMode>,
 );
