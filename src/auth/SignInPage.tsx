@@ -51,6 +51,7 @@ export default function SignInPage() {
   );
   const [user, setUser] = useState<User | null>(null);
   const [message, setMessage] = useState(firebaseSetup.error);
+  const creatingAccount = new URLSearchParams(window.location.search).get("intent") === "create-account";
 
   const admit = useCallback(
     async (userToAdmit: User, isCurrent: () => boolean) => {
@@ -201,8 +202,8 @@ export default function SignInPage() {
         ) : (
           <div className="auth-status">
             <p className="auth-eyebrow">Workspace access</p>
-            <h1>Sign in to QRousel</h1>
-            <p>Use your Google account to create or access your workspaces.</p>
+            <h1>{creatingAccount ? "Create your QRousel account" : "Sign in to QRousel"}</h1>
+            <p>{creatingAccount ? "Use Google to create your free QRousel account and first workspace." : "Use your Google account to access your workspaces."}</p>
             {message && (
               <p className="auth-error" role="alert">
                 {message}
@@ -214,7 +215,7 @@ export default function SignInPage() {
               onClick={() => void beginSignIn()}
             >
               <span aria-hidden="true">G</span>
-              Continue with Google
+              {creatingAccount ? "Create account with Google" : "Continue with Google"}
             </button>
           </div>
         )}
