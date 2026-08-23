@@ -48,5 +48,7 @@ export function describeWorkspaceActivity(
         title: "QR code created",
         detail: `${entry.actorName} created ${namedResource(entry)}.`,
       };
+    case "icon.created":
+      return { title: "Icon created", detail: `${entry.actorName} created ${namedResource(entry)}.` };
   }
 }
