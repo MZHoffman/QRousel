@@ -11,10 +11,13 @@ import DeckCreatePage from "../decks/DeckCreatePage";
 import { useDeckLibrary } from "../decks/use-deck-library";
 import SlideLibraryPage from "../slides/SlideLibraryPage";
 import SlideCreatePage from "../slides/SlideCreatePage";
+import SlideEditPage from "../slides/SlideEditPage";
 import { useSlideLibrary } from "../slides/use-slide-library";
 import QrCodeLibraryPage from "../qr-codes/QrCodeLibraryPage";
+import QrCodeCreatePage from "../qr-codes/QrCodeCreatePage";
 import { useQrCodeLibrary } from "../qr-codes/use-qr-code-library";
 import IconLibraryPage from "../icons/IconLibraryPage";
+import IconCreatePage from "../icons/IconCreatePage";
 import { useIconLibrary } from "../icons/use-icon-library";
 import {
   resolveWorkspaceDeckId,
@@ -207,6 +210,7 @@ function WorkspacePage({
             onOpenDeck(deck.id);
           }}
           onUpdated={deckLibrary.acceptUpdatedDeck}
+          onOpenSlideLibrary={() => navigate("slides")}
         />
       );
     }
@@ -237,6 +241,10 @@ function WorkspacePage({
         />
       );
     }
+    if (editor?.mode === "edit") {
+      const slide = slideLibrary.slides.find((item) => item.id === editor.resourceId);
+      if (slide) return <SlideEditPage library={slideLibrary} role={workspace.role} slide={slide} onBack={() => navigate("slides")} />;
+    }
     return (
       <SlideLibraryPage
         library={slideLibrary}
@@ -246,13 +254,42 @@ function WorkspacePage({
             workspaceResourceEditorPath(workspace.id, "slides", "new"),
           );
         }}
+        onEditPage={(slideId) => window.location.assign(workspaceResourceEditorPath(workspace.id, "slides", "edit", slideId))}
       />
     );
   }
   if (section === "qr-codes") {
-    return <QrCodeLibraryPage library={qrCodeLibrary} role={workspace.role} />;
+    const editor = resolveWorkspaceResourceEditor(
+      window.location.pathname,
+      workspace.id,
+      "qr-codes",
+    );
+    if (editor?.mode === "new") {
+      return (
+        <QrCodeCreatePage
+          library={qrCodeLibrary}
+          role={workspace.role}
+          onBack={() => navigate("qr-codes")}
+        />
+      );
+    }
+    return (
+      <QrCodeLibraryPage
+        library={qrCodeLibrary}
+        role={workspace.role}
+        onCreatePage={() =>
+          window.location.assign(
+            workspaceResourceEditorPath(workspace.id, "qr-codes", "new"),
+          )
+        }
+      />
+    );
   }
-  if (section === "icons") return <IconLibraryPage library={iconLibrary} role={workspace.role} />;
+  if (section === "icons") {
+    const editor = resolveWorkspaceResourceEditor(window.location.pathname, workspace.id, "icons");
+    if (editor?.mode === "new") return <IconCreatePage library={iconLibrary} role={workspace.role} onBack={() => navigate("icons")} />;
+    return <IconLibraryPage library={iconLibrary} role={workspace.role} onCreatePage={() => window.location.assign(workspaceResourceEditorPath(workspace.id, "icons", "new"))} />;
+  }
 
   if (section in RESOURCE_COPY) {
     return (

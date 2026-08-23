@@ -21,6 +21,7 @@ type DeckEditorPageProps = {
   onBack: () => void;
   onDuplicated: (deck: DeckSummary) => void;
   onUpdated: (deck: DeckSummary) => void;
+  onOpenSlideLibrary: () => void;
 };
 
 export default function DeckEditorPage({
@@ -31,6 +32,7 @@ export default function DeckEditorPage({
   onBack,
   onDuplicated,
   onUpdated,
+  onOpenSlideLibrary,
 }: DeckEditorPageProps) {
   const [state, setState] = useState<EditorState>({ kind: "loading" });
   const [name, setName] = useState("");
@@ -253,6 +255,7 @@ export default function DeckEditorPage({
             <span aria-hidden="true">0</span>
             <h3>No slides in this deck</h3>
             <p>Add reusable slides to start building the presentation.</p>
+            {canEdit && <button className="deck-slide-add-tile" type="button" onClick={onOpenSlideLibrary}><strong aria-hidden="true">+</strong><span>Choose or create a slide</span></button>}
           </div>
         </section>
 
