@@ -6,6 +6,7 @@ import {
   isDeckListResponse,
   type DeckSummary,
 } from "../../lib/decks/api-response.ts";
+import { isDeckSlideListResponse, type DeckSlide } from "../../lib/decks/slide-assignment.ts";
 
 type AuthenticatedUser = Pick<User, "getIdToken">;
 
@@ -31,6 +32,32 @@ function deckDetailEndpoint(workspaceId: string, deckId: string): string {
 
 function deckDuplicateEndpoint(workspaceId: string, deckId: string): string {
   return `${deckDetailEndpoint(workspaceId, deckId)}/duplicate`;
+}
+
+function deckSlidesEndpoint(workspaceId: string, deckId: string): string {
+  return `${deckDetailEndpoint(workspaceId, deckId)}/slides`;
+}
+
+export async function requestDeckSlides(user: AuthenticatedUser, workspaceId: string, deckId: string): Promise<DeckSlide[]> {
+  const response = await fetch(deckSlidesEndpoint(workspaceId, deckId), { headers: await authorizationHeaders(user) });
+  const body: unknown = await response.json().catch(() => null);
+  if (response.ok && isDeckSlideListResponse(body)) return body.slides;
+  throw new Error("QRousel could not load this deck's slides.");
+}
+
+export async function addDeckSlide(user: AuthenticatedUser, workspaceId: string, deckId: string, slideId: string): Promise<DeckSlide> {
+  const response = await fetch(deckSlidesEndpoint(workspaceId, deckId), { method: "POST", headers: { ...(await authorizationHeaders(user)), "content-type": "application/json" }, body: JSON.stringify({ slideId }) });
+  const body: unknown = await response.json().catch(() => null);
+  if (response.ok && typeof body === "object" && body !== null && "slide" in body) {
+    const candidate = { slides: [body.slide] };
+    if (isDeckSlideListResponse(candidate)) return candidate.slides[0];
+  }
+  throw new Error("QRousel could not add this slide to the deck.");
+}
+
+export async function updateDeckSlideTiming(user: AuthenticatedUser, workspaceId: string, deckId: string, assignmentId: string, displayDurationSeconds: number | null): Promise<void> {
+  const response = await fetch(`${deckSlidesEndpoint(workspaceId, deckId)}/${encodeURIComponent(assignmentId)}`, { method: "PATCH", headers: { ...(await authorizationHeaders(user)), "content-type": "application/json" }, body: JSON.stringify({ displayDurationSeconds }) });
+  if (!response.ok) throw new Error("QRousel could not save this slide timing.");
 }
 
 async function authorizationHeaders(

@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { User } from "firebase/auth";
 import type { DeckSummary } from "../../lib/decks/api-response";
+import type { DeckSlide } from "../../lib/decks/slide-assignment";
 import type { WorkspaceRole } from "../../lib/workspaces/api-response";
 import {
   requestDeck,
   requestDeckDuplication,
   requestDeckUpdate,
+  addDeckSlide,
+  requestDeckSlides,
+  updateDeckSlideTiming,
 } from "./deck-client";
+import { requestSlides } from "../slides/slide-client";
+import type { SlideSummary } from "../../lib/slides/api-response";
 
 type EditorState =
   | { kind: "loading" }
@@ -41,6 +47,11 @@ export default function DeckEditorPage({
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [conflictDeck, setConflictDeck] = useState<DeckSummary | null>(null);
+  const [deckSlides, setDeckSlides] = useState<DeckSlide[]>([]);
+  const [availableSlides, setAvailableSlides] = useState<SlideSummary[]>([]);
+  const [selectedSlideId, setSelectedSlideId] = useState("");
+  const [slideError, setSlideError] = useState("");
+  const [isUpdatingSlides, setIsUpdatingSlides] = useState(false);
   const canEdit = role !== "viewer";
 
   useEffect(() => {
@@ -67,6 +78,29 @@ export default function DeckEditorPage({
       current = false;
     };
   }, [deckId, user, workspaceId]);
+
+  useEffect(() => {
+    let current = true;
+    void Promise.all([requestDeckSlides(user, workspaceId, deckId), requestSlides(user, workspaceId)]).then(([assigned, available]) => { if (current) { setDeckSlides(assigned); setAvailableSlides(available); } }, () => { if (current) setSlideError("QRousel could not load slides for this deck."); });
+    return () => { current = false; };
+  }, [deckId, user, workspaceId]);
+
+  async function addSelectedSlide() {
+    if (!selectedSlideId || isUpdatingSlides) return;
+    setIsUpdatingSlides(true); setSlideError("");
+    try { const assigned = await addDeckSlide(user, workspaceId, deckId, selectedSlideId); setDeckSlides((items) => [...items, assigned]); setSelectedSlideId(""); }
+    catch (error) { setSlideError(error instanceof Error ? error.message : "QRousel could not add this slide."); }
+    finally { setIsUpdatingSlides(false); }
+  }
+
+  async function saveTiming(assignment: DeckSlide, value: string) {
+    const duration = value === "" ? null : Number(value);
+    if (duration !== null && (!Number.isSafeInteger(duration) || duration < 1)) return;
+    setIsUpdatingSlides(true); setSlideError("");
+    try { await updateDeckSlideTiming(user, workspaceId, deckId, assignment.id, duration); setDeckSlides((items) => items.map((item) => item.id === assignment.id ? { ...item, displayDurationSeconds: duration } : item)); }
+    catch (error) { setSlideError(error instanceof Error ? error.message : "QRousel could not save this timing."); }
+    finally { setIsUpdatingSlides(false); }
+  }
 
   const parsedDuration = Number(duration);
   const isValid =
@@ -251,12 +285,9 @@ export default function DeckEditorPage({
             <p className="workspace-kicker">Deck content</p>
             <h2>Slides</h2>
           </div>
-          <div className="deck-editor-empty">
-            <span aria-hidden="true">0</span>
-            <h3>No slides in this deck</h3>
-            <p>Add reusable slides to start building the presentation.</p>
-            {canEdit && <button className="deck-slide-add-tile" type="button" onClick={onOpenSlideLibrary}><strong aria-hidden="true">+</strong><span>Choose or create a slide</span></button>}
-          </div>
+          {deckSlides.length === 0 ? <div className="deck-editor-empty"><span aria-hidden="true">0</span><h3>No slides in this deck</h3><p>Add reusable slides to start building the presentation.</p></div> : <div className="deck-slide-grid">{deckSlides.map((slide) => <article className="deck-slide-tile" key={slide.id}><span className="deck-status">slide {slide.position + 1}</span><h3>{slide.title}</h3><p>{slide.description || "No description"}</p><label>Timing override<input type="number" min="1" value={slide.displayDurationSeconds ?? ""} placeholder={`${state.deck.defaultDisplayDurationSeconds}s default`} onChange={(event) => void saveTiming(slide, event.target.value)} disabled={!canEdit || isUpdatingSlides} /></label></article>)}</div>}
+          {canEdit && <div className="deck-slide-picker"><div><strong>Add a reusable slide</strong><span>Choose one already in this workspace, or create a new one.</span></div><select value={selectedSlideId} onChange={(event) => setSelectedSlideId(event.target.value)}><option value="">Choose a slide</option>{availableSlides.map((slide) => <option key={slide.id} value={slide.id}>{slide.title}</option>)}</select><button type="button" disabled={!selectedSlideId || isUpdatingSlides} onClick={() => void addSelectedSlide()}>Add slide</button><button className="workspace-text-button" type="button" onClick={onOpenSlideLibrary}>Open slides library</button></div>}
+          {slideError && <p className="auth-error">{slideError}</p>}
         </section>
 
         <form className="deck-settings-card" onSubmit={save}>
