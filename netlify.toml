@@ -24,8 +24,18 @@
   status = 200
 
 [[redirects]]
-  from = "/api/workspaces/:workspaceId/decks/:deckId/duplicate"
+from = "/api/workspaces/:workspaceId/decks/:deckId/duplicate"
   to = "/.netlify/functions/decks?workspaceId=:workspaceId&deckId=:deckId&action=duplicate"
+status = 200
+
+[[redirects]]
+  from = "/api/workspaces/:workspaceId/decks/:deckId/slides/:assignmentId"
+  to = "/.netlify/functions/deck-slides?workspaceId=:workspaceId&deckId=:deckId&assignmentId=:assignmentId"
+  status = 200
+
+[[redirects]]
+  from = "/api/workspaces/:workspaceId/decks/:deckId/slides"
+  to = "/.netlify/functions/deck-slides?workspaceId=:workspaceId&deckId=:deckId"
   status = 200
 
 [[redirects]]
