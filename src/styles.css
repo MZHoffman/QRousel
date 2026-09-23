@@ -1512,6 +1512,17 @@ button {
   line-height: 0.9;
 }
 
+.deck-slide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin-top: 22px; }
+.deck-slide-tile { display: grid; gap: 10px; min-height: 215px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.deck-slide-tile h3 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 500; letter-spacing: -.04em; }
+.deck-slide-tile p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.deck-slide-tile label { display: grid; gap: 5px; margin-top: auto; color: var(--muted); font-size: 9px; font-weight: 800; }
+.deck-slide-tile input { min-height: 35px; padding: 0 8px; border: 1px solid var(--line); border-radius: 7px; font: inherit; font-size: 10px; }
+.deck-slide-picker { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(160px, .7fr) auto; align-items: center; gap: 10px; margin-top: 23px; padding: 16px; border: 1px dashed rgba(30, 107, 75, .46); border-radius: 14px; background: rgba(30, 107, 75, .035); }
+.deck-slide-picker > div { display: grid; gap: 4px; }.deck-slide-picker strong { font-size: 11px; }.deck-slide-picker span { color: var(--muted); font-size: 9px; }
+.deck-slide-picker select { min-height: 39px; padding: 0 8px; border: 1px solid var(--line); border-radius: 7px; background: white; font: inherit; font-size: 10px; }
+.deck-slide-picker button { min-height: 39px; padding: 0 11px; border: 0; border-radius: 7px; background: #13271f; color: white; cursor: pointer; font: inherit; font-size: 10px; font-weight: 900; }.deck-slide-picker .workspace-text-button { background: transparent; color: var(--green); }
+
 .deck-settings-card {
   display: grid;
   gap: 22px;
