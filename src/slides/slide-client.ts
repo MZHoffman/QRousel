@@ -46,7 +46,7 @@ export async function requestSlides(
 export async function requestSlideCreation(
   user: AuthenticatedUser,
   workspaceId: string,
-  input: { title: string; description: string },
+  input: { title: string; description: string; qrCodeId: string | null },
 ): Promise<SlideCreationOutcome> {
   const response = await fetch(slidesEndpoint(workspaceId), {
     method: "POST",
@@ -70,7 +70,7 @@ export async function requestSlideUpdate(
   user: AuthenticatedUser,
   workspaceId: string,
   slideId: string,
-  input: { title: string; description: string; expectedVersion: number },
+  input: { title: string; description: string; qrCodeId: string | null; expectedVersion: number },
 ): Promise<SlideUpdateOutcome> {
   const response = await fetch(slideEndpoint(workspaceId, slideId), {
     method: "PATCH",

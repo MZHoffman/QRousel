@@ -2,6 +2,8 @@ export type SlideSummary = {
   id: string;
   title: string;
   description: string;
+  qrCodeId?: string | null;
+  qrCodeName?: string | null;
   version: number;
 };
 
@@ -22,6 +24,8 @@ function slide(value: unknown): value is SlideSummary {
     typeof value.title === "string" &&
     value.title.length > 0 &&
     typeof value.description === "string" &&
+    (!("qrCodeId" in value) || value.qrCodeId === null || typeof value.qrCodeId === "string") &&
+    (!("qrCodeName" in value) || value.qrCodeName === null || typeof value.qrCodeName === "string") &&
     Number.isSafeInteger(value.version) &&
     Number(value.version) > 0
   );

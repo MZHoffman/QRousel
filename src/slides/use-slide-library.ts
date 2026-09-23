@@ -60,7 +60,7 @@ export function useSlideLibrary(user: User, workspaceId: string) {
     }));
   }
 
-  async function create(input: { title: string; description: string }) {
+  async function create(input: { title: string; description: string; qrCodeId: string | null }) {
     if (isSaving) return false;
     setIsSaving(true);
     setSaveError("");
@@ -91,7 +91,7 @@ export function useSlideLibrary(user: User, workspaceId: string) {
 
   async function update(
     slide: SlideSummary,
-    input: { title: string; description: string },
+    input: { title: string; description: string; qrCodeId: string | null },
   ): Promise<
     | { kind: "updated" }
     | { kind: "conflict"; slide: SlideSummary }

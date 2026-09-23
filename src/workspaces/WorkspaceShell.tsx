@@ -237,13 +237,14 @@ function WorkspacePage({
         <SlideCreatePage
           library={slideLibrary}
           role={workspace.role}
+          qrCodes={qrCodeLibrary.codes}
           onBack={() => navigate("slides")}
         />
       );
     }
     if (editor?.mode === "edit") {
       const slide = slideLibrary.slides.find((item) => item.id === editor.resourceId);
-      if (slide) return <SlideEditPage library={slideLibrary} role={workspace.role} slide={slide} onBack={() => navigate("slides")} />;
+      if (slide) return <SlideEditPage library={slideLibrary} role={workspace.role} slide={slide} qrCodes={qrCodeLibrary.codes} onBack={() => navigate("slides")} />;
     }
     return (
       <SlideLibraryPage

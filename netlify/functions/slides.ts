@@ -35,7 +35,7 @@ export type SlideHandlerDependencies = {
   createSlide: (
     account: AuthenticatedSlideAccount,
     workspaceId: string,
-    input: { title: string; description: string },
+    input: { title: string; description: string; qrCodeId?: string | null },
   ) => Promise<SlideCreationResult>;
   listSlides: (
     account: AuthenticatedSlideAccount,
@@ -45,7 +45,7 @@ export type SlideHandlerDependencies = {
     account: AuthenticatedSlideAccount,
     workspaceId: string,
     slideId: string,
-    input: { title: string; description: string; expectedVersion: number },
+    input: { title: string; description: string; qrCodeId?: string | null; expectedVersion: number },
   ) => Promise<SlideUpdateResult>;
 };
 
@@ -89,7 +89,7 @@ function readSlideRoute(
 
 function isSlideInput(
   body: unknown,
-): body is { title: string; description: string } {
+): body is { title: string; description: string; qrCodeId?: string | null } {
   return (
     typeof body === "object" &&
     body !== null &&
@@ -97,13 +97,14 @@ function isSlideInput(
     typeof body.title === "string" &&
     body.title.trim().length > 0 &&
     "description" in body &&
-    typeof body.description === "string"
+    typeof body.description === "string" &&
+    (!("qrCodeId" in body) || body.qrCodeId === null || typeof body.qrCodeId === "string")
   );
 }
 
 function isSlideUpdateInput(
   body: unknown,
-): body is { title: string; description: string; expectedVersion: number } {
+): body is { title: string; description: string; qrCodeId?: string | null; expectedVersion: number } {
   return (
     isSlideInput(body) &&
     "expectedVersion" in body &&
@@ -206,6 +207,8 @@ function slideSummaryFromSnapshot(
 ): SlideSummary | null {
   const title = snapshot.get("title");
   const description = snapshot.get("description");
+  const qrCodeId = snapshot.get("qrCodeId") ?? null;
+  const qrCodeName = snapshot.get("qrCodeName") ?? null;
   const version = snapshot.get("version") ?? 1;
   if (
     !snapshot.exists ||
@@ -213,13 +216,15 @@ function slideSummaryFromSnapshot(
     typeof title !== "string" ||
     title.length === 0 ||
     typeof description !== "string" ||
+    (qrCodeId !== null && typeof qrCodeId !== "string") ||
+    (qrCodeName !== null && typeof qrCodeName !== "string") ||
     !Number.isSafeInteger(version) ||
     version < 1
   ) {
     return null;
   }
 
-  return { id: snapshot.id, title, description, version };
+  return { id: snapshot.id, title, description, qrCodeId, qrCodeName, version };
 }
 
 const productionDependencies: SlideHandlerDependencies = {
@@ -281,6 +286,9 @@ const productionDependencies: SlideHandlerDependencies = {
         throw new Error("Workspace editing access is unavailable.");
       }
 
+      const qrCodeRef = input.qrCodeId ? workspaceRef.collection("qrCodes").doc(input.qrCodeId) : null;
+      const qrCodeSnapshot = qrCodeRef ? await transaction.get(qrCodeRef) : null;
+      if (qrCodeSnapshot && (!qrCodeSnapshot.exists || qrCodeSnapshot.get("status") !== "active" || typeof qrCodeSnapshot.get("name") !== "string")) throw new Error("The selected QR code is unavailable.");
       const decision = decideSlideCreation({
         slideCount: workspaceSnapshot.get("slideCount") ?? 0,
         requestedTitle: input.title,
@@ -297,6 +305,8 @@ const productionDependencies: SlideHandlerDependencies = {
         createdAt: now,
         createdBy: account.uid,
         description: decision.description,
+        qrCodeId: qrCodeRef?.id ?? null,
+        qrCodeName: qrCodeSnapshot?.get("name") ?? null,
         status: "active",
         title: decision.title,
         updatedAt: now,
@@ -318,6 +328,8 @@ const productionDependencies: SlideHandlerDependencies = {
           id: slideRef.id,
           title: decision.title,
           description: decision.description,
+          qrCodeId: qrCodeRef?.id ?? null,
+          qrCodeName: qrCodeSnapshot?.get("name") ?? null,
           version: 1,
         },
       };
@@ -357,10 +369,15 @@ const productionDependencies: SlideHandlerDependencies = {
 
       const title = input.title.trim();
       const description = input.description.trim();
+      const qrCodeRef = input.qrCodeId ? workspaceRef.collection("qrCodes").doc(input.qrCodeId) : null;
+      const qrCodeSnapshot = qrCodeRef ? await transaction.get(qrCodeRef) : null;
+      if (qrCodeSnapshot && (!qrCodeSnapshot.exists || qrCodeSnapshot.get("status") !== "active" || typeof qrCodeSnapshot.get("name") !== "string")) throw new Error("The selected QR code is unavailable.");
       const version = currentSlide.version + 1;
       const now = FieldValue.serverTimestamp();
       transaction.update(slideRef, {
         description,
+        qrCodeId: qrCodeRef?.id ?? null,
+        qrCodeName: qrCodeSnapshot?.get("name") ?? null,
         title,
         updatedAt: now,
         updatedBy: account.uid,
@@ -369,7 +386,7 @@ const productionDependencies: SlideHandlerDependencies = {
       transaction.update(workspaceRef, { updatedAt: now });
       transaction.set(activityRef, {
         actorUid: account.uid,
-        changedFields: ["title", "description"],
+        changedFields: ["title", "description", "qrCodeId"],
         createdAt: now,
         resourceId: slideId,
         resourceName: title,
@@ -379,7 +396,7 @@ const productionDependencies: SlideHandlerDependencies = {
       });
       return {
         kind: "updated" as const,
-        slide: { id: slideId, title, description, version },
+        slide: { id: slideId, title, description, qrCodeId: qrCodeRef?.id ?? null, qrCodeName: qrCodeSnapshot?.get("name") ?? null, version },
       };
     });
   },
