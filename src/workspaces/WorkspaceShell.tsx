@@ -2,6 +2,10 @@ import { useEffect, useState, type MouseEvent } from "react";
 import type { User } from "firebase/auth";
 import { deleteAccount } from "../auth/delete-account-client";
 import { markWorkspaceNotificationRead, requestWorkspaceNotifications, type WorkspaceNotification } from "./notification-client";
+import { DECK_LIMIT } from "../../lib/decks/creation";
+import { SLIDE_LIMIT } from "../../lib/slides/creation";
+import { QR_CODE_LIMIT } from "../../lib/qr-codes/creation";
+import { ICON_LIMIT } from "../../lib/icons/creation";
 import type {
   WorkspaceRole,
   WorkspaceSummary,
@@ -366,13 +370,14 @@ function WorkspacePage({
                 : id === "qr-codes"
                   ? qrCodeLibrary.status === "ready" ? qrCodeLibrary.codes.length : "—"
                   : id === "icons" ? iconLibrary.state === "ready" ? iconLibrary.icons.length : "—" : 0;
+          const limit = id === "decks" ? DECK_LIMIT : id === "slides" ? SLIDE_LIMIT : id === "qr-codes" ? QR_CODE_LIMIT : ICON_LIMIT;
           return (
             <button key={id} type="button" onClick={() => navigate(id)}>
               <span className="workspace-stat-icon">
                 <NavigationGlyph section={id} />
               </span>
-              <strong>{count}</strong>
-              <span>{item?.label}</span>
+              <strong>{count}<small> / {limit}</small></strong>
+              <span>{item?.label} in use</span>
             </button>
           );
         })}
