@@ -3,6 +3,8 @@ export type QrCodeSummary = {
   name: string;
   content: string;
   kind: "url" | "email" | "phone" | "wifi" | "text";
+  iconId?: string | null;
+  iconName?: string | null;
   color: string;
   version: number;
   revision: number;
@@ -19,6 +21,8 @@ function qrCode(value: unknown): value is QrCodeSummary {
     typeof value.name === "string" &&
     typeof value.content === "string" &&
     (value.kind === "url" || value.kind === "email" || value.kind === "phone" || value.kind === "wifi" || value.kind === "text") &&
+    (!("iconId" in value) || value.iconId === null || typeof value.iconId === "string") &&
+    (!("iconName" in value) || value.iconName === null || typeof value.iconName === "string") &&
     typeof value.color === "string" &&
     Number.isSafeInteger(value.version) &&
     Number.isSafeInteger(value.revision)

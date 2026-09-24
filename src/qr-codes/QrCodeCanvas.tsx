@@ -27,7 +27,7 @@ function loadQrLibrary(): Promise<void> {
   return loader;
 }
 
-export default function QrCodeCanvas({ content, color, version }: { content: string; color: string; version: number }) {
+export default function QrCodeCanvas({ content, color, version, iconImage }: { content: string; color: string; version: number; iconImage?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     let active = true;
@@ -42,8 +42,9 @@ export default function QrCodeCanvas({ content, color, version }: { content: str
       canvas.width = size; canvas.height = size;
       context.fillStyle = "#FFFFFF"; context.fillRect(0, 0, size, size); context.fillStyle = color;
       for (let row = 0; row < modules; row += 1) for (let column = 0; column < modules; column += 1) if (qr.isDark(row, column)) context.fillRect((column + padding) * unit, (row + padding) * unit, unit, unit);
+      if (iconImage) { const icon = new Image(); icon.onload = () => { if (!active || !canvasRef.current) return; const iconSize = Math.floor(size * 0.2), offset = (size - iconSize) / 2; context.fillStyle = "#FFFFFF"; context.fillRect(offset - unit, offset - unit, iconSize + unit * 2, iconSize + unit * 2); context.drawImage(icon, offset, offset, iconSize, iconSize); }; icon.src = iconImage; }
     });
     return () => { active = false; };
-  }, [color, content, version]);
+  }, [color, content, iconImage, version]);
   return <canvas className="qr-code-canvas" ref={canvasRef} aria-label="QR code preview" />;
 }
