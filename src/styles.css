@@ -36,6 +36,25 @@ button {
   color: inherit;
 }
 
+.presentation-shell { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; background: #f6f3eb; }
+.presentation-header { display: flex; align-items: center; gap: 18px; padding: 18px clamp(22px, 5vw, 72px); color: #68786f; font-size: 13px; }
+.presentation-header span:last-child { margin-left: auto; font-variant-numeric: tabular-nums; }
+.presentation-brand { color: #1e6b4b; font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 700; letter-spacing: -.06em; text-decoration: none; }
+.presentation-stage { display: grid; place-items: center; padding: 28px clamp(22px, 6vw, 96px) 44px; }
+.presentation-slide { width: min(1180px, 100%); display: grid; grid-template-columns: minmax(250px, .9fr) minmax(0, 1.1fr); align-items: center; gap: clamp(44px, 9vw, 150px); }
+.presentation-qr { display: grid; place-items: center; min-height: 280px; padding: clamp(20px, 4vw, 48px); border-radius: 30px; background: #fffdfa; box-shadow: 0 18px 54px rgba(23, 37, 31, .11); }
+.presentation-qr .qr-code-canvas { width: min(100%, 500px); height: auto; }
+.presentation-no-qr { display: grid; width: min(100%, 380px); aspect-ratio: 1; place-items: center; border: 2px dashed rgba(23, 37, 31, .18); border-radius: 20px; color: #66756e; }
+.presentation-kicker { margin: 0 0 18px; color: #1e6b4b; font-size: 11px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
+.presentation-copy h1 { max-width: 700px; margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(52px, 7vw, 100px); font-weight: 500; letter-spacing: -.07em; line-height: .92; }
+.presentation-copy > p:not(.presentation-kicker) { max-width: 610px; margin: 28px 0 0; color: #587066; font-size: clamp(17px, 2vw, 23px); line-height: 1.5; }
+.presentation-copy small { display: block; margin-top: 42px; color: #809087; font-size: 12px; }
+.presentation-progress { height: 8px; background: #dfe5dc; }
+.presentation-progress span { display: block; width: 100%; height: 100%; transform-origin: left center; background: #1e6b4b; transition: transform 50ms linear; }
+.presentation-passcode-input { width: 100%; min-height: 50px; margin-top: 24px; padding: 0 16px; border: 1px solid var(--line); border-radius: 14px; background: #fffdfa; }
+
+@media (max-width: 720px) { .presentation-header { padding: 16px 20px; } .presentation-header span:nth-child(2) { display: none; } .presentation-stage { padding: 22px 24px 36px; } .presentation-slide { grid-template-columns: 1fr; gap: 42px; } .presentation-qr { min-height: 0; padding: 24px; } .presentation-qr .qr-code-canvas { width: min(78vw, 390px); } .presentation-copy { text-align: center; } .presentation-copy > p:not(.presentation-kicker) { margin-right: auto; margin-left: auto; } .presentation-copy small { margin-top: 28px; } }
+
 .auth-shell {
   min-height: 100vh;
   min-height: 100dvh;
