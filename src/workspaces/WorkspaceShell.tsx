@@ -405,6 +405,7 @@ function WorkspacePage({
             View activity
           </button>
         </section>
+        {workspace.role === "founder" && <section className="workspace-panel"><p className="workspace-kicker">Danger zone</p><h2>Archive workspace</h2><p>Archive this workspace and remove it from every member’s workspace list.</p><button type="button" onClick={async () => { const confirmation = window.prompt(`Type “${workspace.name}” to archive this workspace.`); if (confirmation !== workspace.name) return; const response = await fetch("/api/workspaces", { method: "DELETE", headers: { authorization: `Bearer ${await user.getIdToken()}`, "content-type": "application/json" }, body: JSON.stringify({ workspaceId: workspace.id, confirmation }) }); if (response.ok) window.location.assign("/app"); }}>Archive workspace</button></section>}
       </div>
     </>
   );
