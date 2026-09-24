@@ -14,6 +14,7 @@ export const WORKSPACE_ACTIVITY_TYPES = [
   "member.removed",
   "invitation.created",
   "invitation.accepted",
+  "workspace.founder-transferred",
 ] as const;
 
 export type WorkspaceActivityType =

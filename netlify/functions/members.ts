@@ -27,11 +27,13 @@ export default async function members(request: Request) {
     if (!memberUid || (request.method !== "PATCH" && request.method !== "DELETE")) return json({ error: "Method not allowed." }, 405);
     const targetMembership = db.doc(`workspaceMemberships/${workspaceId}_${memberUid}`);
     const result = await db.runTransaction(async (transaction) => {
-      const target = await transaction.get(targetMembership); const targetRole = target.get("role");
+      const target = await transaction.get(targetMembership); const targetRole = target.get("role"); const body: unknown = request.method === "PATCH" ? await request.json().catch(() => null) : null;
+      const transfer = body && typeof body === "object" && "transferFounder" in body && body.transferFounder === true;
+      if (transfer) { if (actorRole !== "founder" || !target.exists || target.get("status") !== "active" || !role(targetRole) || targetRole === "founder") return { kind: "denied" as const }; const now = FieldValue.serverTimestamp(); transaction.update(actorMembership, { role: "owner", updatedAt: now }); transaction.update(targetMembership, { role: "founder", updatedAt: now, updatedBy: account.uid }); transaction.update(workspace, { founderUid: memberUid, updatedAt: now }); transaction.set(workspace.collection("activity").doc(), { type: "workspace.founder-transferred", actorUid: account.uid, createdAt: now, resourceId: memberUid, resourceName: "New founder", resourceType: "workspace", workspaceId }); return { kind: "transferred" as const }; }
       if (!target.exists || target.get("status") !== "active" || !role(targetRole) || !canManage(actorRole, targetRole)) return { kind: "denied" as const };
       const now = FieldValue.serverTimestamp(); const activity = workspace.collection("activity").doc();
       if (request.method === "DELETE") { transaction.update(targetMembership, { status: "revoked", revokedAt: now, revokedBy: account.uid, updatedAt: now }); transaction.set(activity, { type: "member.removed", actorUid: account.uid, createdAt: now, resourceId: memberUid, resourceName: "Workspace member", resourceType: "workspace", workspaceId }); return { kind: "removed" as const }; }
-      const body: unknown = await request.json().catch(() => null); const nextRole = body && typeof body === "object" && "role" in body ? body.role : null;
+      const nextRole = body && typeof body === "object" && "role" in body ? body.role : null;
       if (!role(nextRole) || nextRole === "founder" || rank[nextRole] >= rank[actorRole]) return { kind: "invalid" as const };
       transaction.update(targetMembership, { role: nextRole, updatedAt: now, updatedBy: account.uid }); transaction.set(activity, { type: "member.role-updated", actorUid: account.uid, createdAt: now, resourceId: memberUid, resourceName: "Workspace member", resourceType: "workspace", changedFields: ["role"], workspaceId }); return { kind: "updated" as const, role: nextRole };
     });
