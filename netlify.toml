@@ -14,6 +14,16 @@ from = "/api/workspaces"
   status = 200
 
 [[redirects]]
+  from = "/api/workspaces/:workspaceId/members/:memberUid"
+  to = "/.netlify/functions/members?workspaceId=:workspaceId&memberUid=:memberUid"
+  status = 200
+
+[[redirects]]
+  from = "/api/workspaces/:workspaceId/members"
+  to = "/.netlify/functions/members?workspaceId=:workspaceId"
+  status = 200
+
+[[redirects]]
   from = "/api/workspaces/:workspaceId/activity"
   to = "/.netlify/functions/activity?workspaceId=:workspaceId"
   status = 200

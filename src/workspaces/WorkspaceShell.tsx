@@ -34,7 +34,8 @@ import {
   resolveWorkspaceResourceEditor,
   workspaceResourceEditorPath,
 } from "../../lib/workspaces/resource-editor-navigation";
-import { createInvitation } from "./invitation-client";
+import { createInvitation, requestInvitations, type WorkspaceInvitation } from "./invitation-client";
+import { requestMembers, revokeMember, updateMemberRole, type WorkspaceMember } from "./members-client";
 
 type WorkspaceShellProps = {
   workspace: WorkspaceSummary;
@@ -167,7 +168,6 @@ function ResourcePage({
 function WorkspacePage({
   section,
   workspace,
-  userEmail,
   navigate,
   deckLibrary,
   slideLibrary,
@@ -182,7 +182,6 @@ function WorkspacePage({
 }: {
   section: WorkspaceSection;
   workspace: WorkspaceSummary;
-  userEmail: string | null;
   navigate: (section: WorkspaceSection) => void;
   deckLibrary: ReturnType<typeof useDeckLibrary>;
   slideLibrary: ReturnType<typeof useSlideLibrary>;
@@ -308,7 +307,6 @@ function WorkspacePage({
   }
 
   if (section === "members") {
-    const canInvite = ["founder", "owner", "admin"].includes(workspace.role);
     return (
       <>
         <header className="workspace-page-heading">
@@ -318,17 +316,7 @@ function WorkspacePage({
             <p>Manage who can access this workspace and what they can do.</p>
           </div>
         </header>
-        <section className="workspace-list-card">
-          <div className="workspace-member-avatar" aria-hidden="true">
-            {(userEmail?.[0] ?? "U").toUpperCase()}
-          </div>
-          <div>
-            <strong>{userEmail ?? "Current user"}</strong>
-            <span>Original workspace member</span>
-          </div>
-          <span className="workspace-role">{roleLabel(workspace.role)}</span>
-        </section>
-        {canInvite && <InvitePanel user={user} workspaceId={workspace.id} />}
+        <MembersPanel user={user} workspaceId={workspace.id} actorRole={workspace.role} />
       </>
     );
   }
@@ -434,11 +422,20 @@ function WorkspacePage({
   );
 }
 
-function InvitePanel({ user, workspaceId }: { user: User; workspaceId: string }) {
-  const [role, setRole] = useState<Exclude<WorkspaceRole, "founder">>("editor");
+function manageableRoles(role: WorkspaceRole): Exclude<WorkspaceRole, "founder">[] { return role === "founder" ? ["owner", "admin", "editor", "viewer"] : role === "owner" ? ["admin", "editor", "viewer"] : role === "admin" ? ["editor", "viewer"] : []; }
+function MembersPanel({ user, workspaceId, actorRole }: { user: User; workspaceId: string; actorRole: WorkspaceRole }) {
+  const [members, setMembers] = useState<WorkspaceMember[]>([]); const [invitations, setInvitations] = useState<WorkspaceInvitation[]>([]); const [error, setError] = useState(""); const [busyUid, setBusyUid] = useState("");
+  const roles = manageableRoles(actorRole); const canManage = roles.length > 0;
+  useEffect(() => { let active = true; void Promise.all([requestMembers(user, workspaceId), canManage ? requestInvitations(user, workspaceId) : Promise.resolve([])]).then(([nextMembers, nextInvitations]) => { if (active) { setMembers(nextMembers); setInvitations(nextInvitations); } }, (reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : "QRousel could not load workspace access."); }); return () => { active = false; }; }, [canManage, user, workspaceId]);
+  async function changeRole(member: WorkspaceMember, role: Exclude<WorkspaceRole, "founder">) { setBusyUid(member.uid); setError(""); try { await updateMemberRole(user, workspaceId, member.uid, role); setMembers((items) => items.map((item) => item.uid === member.uid ? { ...item, role } : item)); } catch (reason) { setError(reason instanceof Error ? reason.message : "QRousel could not change this role."); } finally { setBusyUid(""); } }
+  async function remove(member: WorkspaceMember) { if (!window.confirm(`Remove ${member.email ?? member.displayName ?? "this member"} from the workspace?`)) return; setBusyUid(member.uid); setError(""); try { await revokeMember(user, workspaceId, member.uid); setMembers((items) => items.filter((item) => item.uid !== member.uid)); } catch (reason) { setError(reason instanceof Error ? reason.message : "QRousel could not remove this member."); } finally { setBusyUid(""); } }
+  return <><section className="workspace-member-list">{members.map((member) => { const canEdit = roles.includes(member.role as Exclude<WorkspaceRole, "founder">) && member.uid !== user.uid; return <article className="workspace-list-card" key={member.uid}><div className="workspace-member-avatar" aria-hidden="true">{(member.displayName?.[0] ?? member.email?.[0] ?? "U").toUpperCase()}</div><div><strong>{member.displayName ?? member.email ?? "Workspace member"}</strong><span>{member.email ?? "No email available"}</span></div>{canEdit ? <><select value={member.role} disabled={busyUid === member.uid} onChange={(event) => void changeRole(member, event.target.value as Exclude<WorkspaceRole, "founder">)}>{roles.map((role) => <option key={role}>{role}</option>)}</select><button className="workspace-text-button" type="button" disabled={busyUid === member.uid} onClick={() => void remove(member)}>Remove</button></> : <span className="workspace-role">{roleLabel(member.role)}</span>}</article>; })}</section>{error && <p className="auth-error" role="alert">{error}</p>}{canManage && <InvitePanel user={user} workspaceId={workspaceId} roles={roles} onCreated={(invitation) => setInvitations((items) => [invitation, ...items])} />}{canManage && <section className="workspace-invitation-status"><h2>Invitation status</h2>{invitations.length === 0 ? <p>No invitation links yet.</p> : <ul>{invitations.map((invitation) => <li key={invitation.token}><span>{roleLabel(invitation.role)}</span><span>{invitation.status === "active" ? "Ready to use" : "Used"}</span></li>)}</ul>}</section>}</>;
+}
+function InvitePanel({ user, workspaceId, roles, onCreated }: { user: User; workspaceId: string; roles: Exclude<WorkspaceRole, "founder">[]; onCreated: (invitation: WorkspaceInvitation) => void }) {
+  const [role, setRole] = useState<Exclude<WorkspaceRole, "founder">>(roles.includes("editor") ? "editor" : roles[0]);
   const [link, setLink] = useState(""); const [error, setError] = useState("");
-  async function create() { setError(""); try { const token = await createInvitation(user, workspaceId, role); setLink(`${window.location.origin}/app?invite=${encodeURIComponent(token)}`); } catch (reason) { setError(reason instanceof Error ? reason.message : "QRousel could not create an invitation."); } }
-  return <section className="workspace-list-card invite-panel"><div><strong>Invite a member</strong><span>Generate a single-use link for an existing or new QRousel account.</span></div><select value={role} onChange={(event) => setRole(event.target.value as Exclude<WorkspaceRole, "founder">)}>{["owner", "admin", "editor", "viewer"].map((item) => <option key={item}>{item}</option>)}</select><button type="button" onClick={() => void create()}>Generate invite link</button>{link && <label><span>Single-use link</span><input readOnly value={link} onFocus={(event) => event.currentTarget.select()} /></label>}{error && <p className="auth-error">{error}</p>}</section>;
+  async function create() { setError(""); try { const token = await createInvitation(user, workspaceId, role); setLink(`${window.location.origin}/app?invite=${encodeURIComponent(token)}`); onCreated({ token, role, status: "active" }); } catch (reason) { setError(reason instanceof Error ? reason.message : "QRousel could not create an invitation."); } }
+  return <section className="workspace-list-card invite-panel"><div><strong>Invite a member</strong><span>Generate a single-use link for an existing or new QRousel account.</span></div><select value={role} onChange={(event) => setRole(event.target.value as Exclude<WorkspaceRole, "founder">)}>{roles.map((item) => <option key={item}>{item}</option>)}</select><button type="button" onClick={() => void create()}>Generate invite link</button>{link && <label><span>Single-use link</span><input readOnly value={link} onFocus={(event) => event.currentTarget.select()} /></label>}{error && <p className="auth-error">{error}</p>}</section>;
 }
 
 export default function WorkspaceShell({
@@ -587,7 +584,6 @@ export default function WorkspaceShell({
           <WorkspacePage
             section={section}
             workspace={workspace}
-            userEmail={user.email}
             navigate={navigate}
             deckLibrary={deckLibrary}
             slideLibrary={slideLibrary}
