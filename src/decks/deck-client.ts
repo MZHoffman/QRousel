@@ -60,6 +60,16 @@ export async function updateDeckSlideTiming(user: AuthenticatedUser, workspaceId
   if (!response.ok) throw new Error("QRousel could not save this slide timing.");
 }
 
+export async function reorderDeckSlides(user: AuthenticatedUser, workspaceId: string, deckId: string, orderedAssignmentIds: string[]): Promise<void> {
+  const response = await fetch(deckSlidesEndpoint(workspaceId, deckId), { method: "PATCH", headers: { ...(await authorizationHeaders(user)), "content-type": "application/json" }, body: JSON.stringify({ orderedAssignmentIds }) });
+  if (!response.ok) throw new Error("QRousel could not reorder this deck. Reload and try again.");
+}
+
+export async function removeDeckSlide(user: AuthenticatedUser, workspaceId: string, deckId: string, assignmentId: string): Promise<void> {
+  const response = await fetch(`${deckSlidesEndpoint(workspaceId, deckId)}/${encodeURIComponent(assignmentId)}`, { method: "DELETE", headers: await authorizationHeaders(user) });
+  if (!response.ok) throw new Error("QRousel could not remove this slide from the deck.");
+}
+
 async function authorizationHeaders(
   user: AuthenticatedUser,
 ): Promise<HeadersInit> {
