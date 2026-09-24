@@ -1,5 +1,6 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import type { User } from "firebase/auth";
+import { deleteAccount } from "../auth/delete-account-client";
 import type {
   WorkspaceRole,
   WorkspaceSummary,
@@ -443,6 +444,7 @@ export default function WorkspaceShell({
   onWorkspaceChange,
   onSignOut,
 }: WorkspaceShellProps) {
+  const [accountDeletionError, setAccountDeletionError] = useState("");
   const [section, setSection] = useState<WorkspaceSection>(() =>
     resolveWorkspaceSection(window.location.pathname),
   );
@@ -499,6 +501,23 @@ export default function WorkspaceShell({
   ) {
     event.preventDefault();
     navigate(nextSection);
+  }
+
+  async function removeAccount() {
+    const confirmation = window.prompt(
+      "Type DELETE MY ACCOUNT to permanently delete your QRousel account.",
+    );
+    if (confirmation !== "DELETE MY ACCOUNT") return;
+    setAccountDeletionError("");
+    try {
+      await deleteAccount(user);
+      await onSignOut();
+      window.location.assign("/");
+    } catch (reason) {
+      setAccountDeletionError(
+        reason instanceof Error ? reason.message : "QRousel could not delete this account.",
+      );
+    }
   }
 
   return (
@@ -560,6 +579,10 @@ export default function WorkspaceShell({
           <button type="button" onClick={() => void onSignOut()}>
             Sign out
           </button>
+          <button className="workspace-text-button" type="button" onClick={() => void removeAccount()}>
+            Delete account
+          </button>
+          {accountDeletionError && <p className="auth-error" role="alert">{accountDeletionError}</p>}
         </div>
       </aside>
 
@@ -576,6 +599,10 @@ export default function WorkspaceShell({
             <button type="button" onClick={() => void onSignOut()}>
               Sign out
             </button>
+            <button className="workspace-text-button" type="button" onClick={() => void removeAccount()}>
+              Delete account
+            </button>
+            {accountDeletionError && <p className="auth-error" role="alert">{accountDeletionError}</p>}
           </div>
         </header>
         <section className="workspace-page">

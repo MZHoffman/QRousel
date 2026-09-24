@@ -1,5 +1,6 @@
 export const WORKSPACE_ACTIVITY_TYPES = [
   "workspace.created",
+  "workspace.archived",
   "deck.created",
   "deck.updated",
   "deck.duplicated",
