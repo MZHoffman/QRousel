@@ -1639,6 +1639,112 @@ button {
   font-size: 10px;
 }
 
+.icon-crop-tools,
+.icon-crop-tools > div,
+.icon-crop-workspace {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.icon-crop-tools {
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(30, 107, 75, 0.04);
+}
+
+.icon-crop-tools strong,
+.icon-crop-tools button {
+  font-size: 11px;
+}
+
+.icon-crop-tools button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+}
+
+.icon-crop-tools button.is-selected {
+  border-color: var(--green);
+  background: var(--green);
+  color: white;
+}
+
+.icon-crop-workspace { align-items: flex-start; }
+
+.icon-crop-canvas {
+  position: relative;
+  width: min(100%, 720px);
+  max-height: 58vh;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  background: #17251f;
+}
+
+.icon-crop-canvas > img {
+  display: block;
+  width: 100%;
+  max-height: 58vh;
+  object-fit: contain;
+}
+
+.icon-crop-window {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  border: 2px solid #d9f577;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.56);
+}
+
+.icon-crop-window::before,
+.icon-crop-window::after {
+  position: absolute;
+  inset: 33.333% 0 auto;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.6);
+  content: "";
+  box-shadow: 0 33.333% 0 rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.icon-crop-move {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: move;
+}
+
+.icon-crop-handle {
+  position: absolute;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.icon-crop-handle-nw { top: -8px; left: -8px; cursor: nwse-resize; }
+.icon-crop-handle-ne { top: -8px; right: -8px; cursor: nesw-resize; }
+.icon-crop-handle-sw { bottom: -8px; left: -8px; cursor: nesw-resize; }
+.icon-crop-handle-se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+.icon-crop-handle-n { top: -8px; left: calc(50% - 7px); cursor: ns-resize; }
+.icon-crop-handle-s { bottom: -8px; left: calc(50% - 7px); cursor: ns-resize; }
+.icon-crop-handle-w { top: calc(50% - 7px); left: -8px; cursor: ew-resize; }
+.icon-crop-handle-e { top: calc(50% - 7px); right: -8px; cursor: ew-resize; }
+
 .deck-settings-card input:disabled {
   background: rgba(23, 37, 31, 0.04);
   color: var(--muted);
