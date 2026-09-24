@@ -7,6 +7,7 @@ export type QrCodeSummary = {
   iconName?: string | null;
   color: string;
   version: number;
+  logoScale?: number;
   revision: number;
   scanCount?: number;
 };
@@ -26,6 +27,7 @@ function qrCode(value: unknown): value is QrCodeSummary {
     (!("iconName" in value) || value.iconName === null || typeof value.iconName === "string") &&
     typeof value.color === "string" &&
     Number.isSafeInteger(value.version) &&
+    (!("logoScale" in value) || (typeof value.logoScale === "number" && value.logoScale >= 0.1 && value.logoScale <= 0.5)) &&
     Number.isSafeInteger(value.revision)
     && (!("scanCount" in value) || (Number.isSafeInteger(value.scanCount) && Number(value.scanCount) >= 0))
   );

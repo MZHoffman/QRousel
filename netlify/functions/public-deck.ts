@@ -34,7 +34,7 @@ export default async function publicDeck(request: Request) {
       if (!qrCode.exists || qrCode.get("status") !== "active") return null;
       const iconId = qrCode.get("iconId");
       const icon = typeof iconId === "string" ? await workspace.collection("icons").doc(iconId).get() : null;
-      return { id: qrCode.id, content: qrCode.get("content"), kind: qrCode.get("kind"), color: qrCode.get("color"), version: qrCode.get("version"), iconImage: icon?.exists && icon.get("status") === "active" ? icon.get("imageDataUrl") : null };
+      return { id: qrCode.id, content: qrCode.get("content"), kind: qrCode.get("kind"), color: qrCode.get("color"), version: qrCode.get("version"), logoScale: qrCode.get("logoScale"), iconImage: icon?.exists && icon.get("status") === "active" ? icon.get("imageDataUrl") : null };
     }));
     return json({ deck: { id: deck.id, name: deck.get("name"), defaultDisplayDurationSeconds: deck.get("defaultDisplayDurationSeconds") }, slides: activeSlides.map((slide, index) => {
       const code = codes[index];
