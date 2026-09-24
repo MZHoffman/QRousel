@@ -64,5 +64,7 @@ export function describeWorkspaceActivity(
       return { title: "Invitation created", detail: `${entry.actorName} created an invitation for ${namedResource(entry)}.` };
     case "invitation.accepted":
       return { title: "Invitation accepted", detail: `${entry.actorName} joined this workspace.` };
+    case "workspace.founder-transferred":
+      return { title: "Workspace founder transferred", detail: `${entry.actorName} transferred founder responsibility to ${namedResource(entry)}.` };
   }
 }
