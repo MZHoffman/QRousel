@@ -54,8 +54,13 @@ status = 200
   status = 200
 
 [[redirects]]
-  from = "/api/workspaces/:workspaceId/qr-codes"
+from = "/api/workspaces/:workspaceId/qr-codes"
   to = "/.netlify/functions/qr-codes?workspaceId=:workspaceId"
+status = 200
+
+[[redirects]]
+  from = "/api/workspaces/:workspaceId/qr-codes/:qrCodeId"
+  to = "/.netlify/functions/qr-codes?workspaceId=:workspaceId&qrCodeId=:qrCodeId"
   status = 200
 
 [[redirects]]

@@ -15,6 +15,7 @@ import SlideEditPage from "../slides/SlideEditPage";
 import { useSlideLibrary } from "../slides/use-slide-library";
 import QrCodeLibraryPage from "../qr-codes/QrCodeLibraryPage";
 import QrCodeCreatePage from "../qr-codes/QrCodeCreatePage";
+import QrCodeEditPage from "../qr-codes/QrCodeEditPage";
 import { useQrCodeLibrary } from "../qr-codes/use-qr-code-library";
 import IconLibraryPage from "../icons/IconLibraryPage";
 import IconCreatePage from "../icons/IconCreatePage";
@@ -243,6 +244,10 @@ function WorkspacePage({
       );
     }
     if (editor?.mode === "edit") {
+      const code = qrCodeLibrary.codes.find((item) => item.id === editor.resourceId);
+      if (code) return <QrCodeEditPage library={qrCodeLibrary} role={workspace.role} code={code} onBack={() => navigate("qr-codes")} />;
+    }
+    if (editor?.mode === "edit") {
       const slide = slideLibrary.slides.find((item) => item.id === editor.resourceId);
       if (slide) return <SlideEditPage library={slideLibrary} role={workspace.role} slide={slide} qrCodes={qrCodeLibrary.codes} onBack={() => navigate("slides")} />;
     }
@@ -283,6 +288,7 @@ function WorkspacePage({
             workspaceResourceEditorPath(workspace.id, "qr-codes", "new"),
           )
         }
+        onEditPage={(qrCodeId) => window.location.assign(workspaceResourceEditorPath(workspace.id, "qr-codes", "edit", qrCodeId))}
       />
     );
   }
