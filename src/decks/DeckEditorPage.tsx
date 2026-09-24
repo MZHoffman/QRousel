@@ -15,6 +15,7 @@ import {
 } from "./deck-client";
 import { requestSlides } from "../slides/slide-client";
 import type { SlideSummary } from "../../lib/slides/api-response";
+import { archiveResource } from "../workspaces/trash-client";
 
 type EditorState =
   | { kind: "loading" }
@@ -283,6 +284,7 @@ export default function DeckEditorPage({
               {isDuplicating ? "Duplicating…" : "Duplicate deck"}
             </button>
           )}
+          {canEdit && <button type="button" onClick={() => { if (window.confirm(`Archive “${state.deck.name}”?`)) void archiveResource(user, workspaceId, "decks", deckId).then(onBack); }}>Archive deck</button>}
           {!canEdit && <span className="deck-editor-readonly">Read only</span>}
         </div>
       </header>

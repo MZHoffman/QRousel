@@ -1,0 +1,10 @@
+import type { User } from "firebase/auth";
+export type TrashResourceType = "decks" | "slides" | "qr-codes" | "icons";
+export type TrashItem = { id: string; type: TrashResourceType; name: string };
+const headers = async (user: User) => ({ authorization: `Bearer ${await user.getIdToken()}` });
+const endpoint = (workspaceId: string, type: TrashResourceType, id?: string, action?: "restore") => `/api/workspaces/${encodeURIComponent(workspaceId)}/trash/${type}${id ? `/${encodeURIComponent(id)}` : ""}${action ? `?action=${action}` : ""}`;
+async function request(user: User, workspaceId: string, type: TrashResourceType, id: string, method: "PATCH" | "DELETE", action?: "restore") { const response = await fetch(endpoint(workspaceId, type, id, action), { method, headers: await headers(user) }); if (!response.ok) { const body: unknown = await response.json().catch(() => null); throw new Error(body && typeof body === "object" && "error" in body && typeof body.error === "string" ? body.error : "QRousel could not update this resource."); } }
+export const archiveResource = (user: User, workspaceId: string, type: TrashResourceType, id: string) => request(user, workspaceId, type, id, "PATCH");
+export const restoreResource = (user: User, workspaceId: string, type: TrashResourceType, id: string) => request(user, workspaceId, type, id, "PATCH", "restore");
+export const deleteResource = (user: User, workspaceId: string, type: TrashResourceType, id: string) => request(user, workspaceId, type, id, "DELETE");
+export async function requestTrash(user: User, workspaceId: string): Promise<TrashItem[]> { const types: TrashResourceType[] = ["decks", "slides", "qr-codes", "icons"]; const lists = await Promise.all(types.map(async (type) => { const response = await fetch(endpoint(workspaceId, type), { headers: await headers(user) }); const body: unknown = await response.json().catch(() => null); return response.ok && body && typeof body === "object" && "items" in body && Array.isArray(body.items) ? body.items as TrashItem[] : []; })); return lists.flat(); }
