@@ -34,6 +34,11 @@ from = "/api/workspaces"
   status = 200
 
 [[redirects]]
+  from = "/api/workspaces/:workspaceId/notifications"
+  to = "/.netlify/functions/notifications?workspaceId=:workspaceId"
+  status = 200
+
+[[redirects]]
   from = "/api/workspaces/:workspaceId/members"
   to = "/.netlify/functions/members?workspaceId=:workspaceId"
   status = 200
