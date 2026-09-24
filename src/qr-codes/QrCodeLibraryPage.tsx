@@ -3,10 +3,11 @@ import { QR_CODE_LIMIT } from "../../lib/qr-codes/creation";
 import type { WorkspaceRole } from "../../lib/workspaces/api-response";
 import QrCodeCanvas from "./QrCodeCanvas";
 import type { useQrCodeLibrary } from "./use-qr-code-library";
+import type { IconSummary } from "../../lib/icons/api-response";
 
-type Props = { library: ReturnType<typeof useQrCodeLibrary>; role: WorkspaceRole; onCreatePage: () => void; onEditPage: (qrCodeId: string) => void };
+type Props = { library: ReturnType<typeof useQrCodeLibrary>; role: WorkspaceRole; icons: IconSummary[]; onCreatePage: () => void; onEditPage: (qrCodeId: string) => void };
 
-export default function QrCodeLibraryPage({ library, role, onCreatePage, onEditPage }: Props) {
+export default function QrCodeLibraryPage({ library, role, icons, onCreatePage, onEditPage }: Props) {
   const [query, setQuery] = useState("");
   const canEdit = role !== "viewer";
   const codes = useMemo(() => {
@@ -21,6 +22,6 @@ export default function QrCodeLibraryPage({ library, role, onCreatePage, onEditP
     {library.status === "loading" && <section className="deck-library-status"><p>Loading QR codes…</p></section>}
     {library.status === "error" && <section className="deck-library-status"><h2>We could not load your QR codes</h2><p>{library.error}</p></section>}
     {library.status === "ready" && library.codes.length === 0 && <section className="workspace-library-empty"><span className="workspace-empty-mark deck-empty-mark">0</span><h2>No QR codes yet</h2><p>Create a code once, then reuse it across your workspace.</p>{canEdit && <button className="deck-empty-action" type="button" onClick={onCreatePage}>Create your first QR code</button>}</section>}
-    {library.status === "ready" && library.codes.length > 0 && (codes.length === 0 ? <section className="deck-library-status"><h2>No matching QR codes</h2><p>Try a different search.</p></section> : <section className="slide-card-grid">{codes.map((code) => <article className="slide-card" key={code.id}><span className="deck-status">{code.kind}</span><h2>{code.name}</h2><p>{code.content}</p><QrCodeCanvas content={code.content} color={code.color} version={code.version} />{canEdit && <button type="button" onClick={() => onEditPage(code.id)}>Edit QR code</button>}</article>)}</section>)}
+    {library.status === "ready" && library.codes.length > 0 && (codes.length === 0 ? <section className="deck-library-status"><h2>No matching QR codes</h2><p>Try a different search.</p></section> : <section className="slide-card-grid">{codes.map((code) => <article className="slide-card" key={code.id}><span className="deck-status">{code.kind}</span><h2>{code.name}</h2><p>{code.content}</p><QrCodeCanvas content={code.content} color={code.color} version={code.version} iconImage={icons.find((icon) => icon.id === code.iconId)?.imageDataUrl} />{canEdit && <button type="button" onClick={() => onEditPage(code.id)}>Edit QR code</button>}</article>)}</section>)}
   </>;
 }
