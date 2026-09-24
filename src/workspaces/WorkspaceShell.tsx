@@ -34,6 +34,7 @@ import {
   resolveWorkspaceResourceEditor,
   workspaceResourceEditorPath,
 } from "../../lib/workspaces/resource-editor-navigation";
+import { createInvitation } from "./invitation-client";
 
 type WorkspaceShellProps = {
   workspace: WorkspaceSummary;
@@ -307,6 +308,7 @@ function WorkspacePage({
   }
 
   if (section === "members") {
+    const canInvite = ["founder", "owner", "admin"].includes(workspace.role);
     return (
       <>
         <header className="workspace-page-heading">
@@ -326,6 +328,7 @@ function WorkspacePage({
           </div>
           <span className="workspace-role">{roleLabel(workspace.role)}</span>
         </section>
+        {canInvite && <InvitePanel user={user} workspaceId={workspace.id} />}
       </>
     );
   }
@@ -429,6 +432,13 @@ function WorkspacePage({
       </div>
     </>
   );
+}
+
+function InvitePanel({ user, workspaceId }: { user: User; workspaceId: string }) {
+  const [role, setRole] = useState<Exclude<WorkspaceRole, "founder">>("editor");
+  const [link, setLink] = useState(""); const [error, setError] = useState("");
+  async function create() { setError(""); try { const token = await createInvitation(user, workspaceId, role); setLink(`${window.location.origin}/app?invite=${encodeURIComponent(token)}`); } catch (reason) { setError(reason instanceof Error ? reason.message : "QRousel could not create an invitation."); } }
+  return <section className="workspace-list-card invite-panel"><div><strong>Invite a member</strong><span>Generate a single-use link for an existing or new QRousel account.</span></div><select value={role} onChange={(event) => setRole(event.target.value as Exclude<WorkspaceRole, "founder">)}>{["owner", "admin", "editor", "viewer"].map((item) => <option key={item}>{item}</option>)}</select><button type="button" onClick={() => void create()}>Generate invite link</button>{link && <label><span>Single-use link</span><input readOnly value={link} onFocus={(event) => event.currentTarget.select()} /></label>}{error && <p className="auth-error">{error}</p>}</section>;
 }
 
 export default function WorkspaceShell({
