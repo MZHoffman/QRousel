@@ -8,6 +8,7 @@ export type QrCodeSummary = {
   color: string;
   version: number;
   revision: number;
+  scanCount?: number;
 };
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -26,6 +27,7 @@ function qrCode(value: unknown): value is QrCodeSummary {
     typeof value.color === "string" &&
     Number.isSafeInteger(value.version) &&
     Number.isSafeInteger(value.revision)
+    && (!("scanCount" in value) || (Number.isSafeInteger(value.scanCount) && Number(value.scanCount) >= 0))
   );
 }
 
