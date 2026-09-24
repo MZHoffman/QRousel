@@ -34,11 +34,11 @@ export default async function publicDeck(request: Request) {
       if (!qrCode.exists || qrCode.get("status") !== "active") return null;
       const iconId = qrCode.get("iconId");
       const icon = typeof iconId === "string" ? await workspace.collection("icons").doc(iconId).get() : null;
-      return { content: qrCode.get("content"), color: qrCode.get("color"), version: qrCode.get("version"), iconImage: icon?.exists && icon.get("status") === "active" ? icon.get("imageDataUrl") : null };
+      return { id: qrCode.id, content: qrCode.get("content"), kind: qrCode.get("kind"), color: qrCode.get("color"), version: qrCode.get("version"), iconImage: icon?.exists && icon.get("status") === "active" ? icon.get("imageDataUrl") : null };
     }));
     return json({ deck: { id: deck.id, name: deck.get("name"), defaultDisplayDurationSeconds: deck.get("defaultDisplayDurationSeconds") }, slides: activeSlides.map((slide, index) => {
       const code = codes[index];
-      return { id: slide.id, title: slide.get("title"), description: slide.get("description"), displayDurationSeconds: slide.get("displayDurationSeconds") ?? null, qrCode: code && typeof code.content === "string" && typeof code.color === "string" && Number.isSafeInteger(code.version) ? code : null };
+      return { id: slide.id, title: slide.get("title"), description: slide.get("description"), displayDurationSeconds: slide.get("displayDurationSeconds") ?? null, qrCode: code && typeof code.id === "string" && typeof code.content === "string" && (code.kind === "url" || code.kind === "email" || code.kind === "phone" || code.kind === "wifi" || code.kind === "text") && typeof code.color === "string" && Number.isSafeInteger(code.version) ? code : null };
     }) });
   } catch (error) { console.error("Public deck request failed.", error); return json({ error: "Presentation unavailable." }, 503); }
 }

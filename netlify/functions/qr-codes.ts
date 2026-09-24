@@ -67,7 +67,7 @@ function summary(snapshot: DocumentSnapshot): QrCodeSummary | null {
   const name = snapshot.get("name"), content = snapshot.get("content"), color = snapshot.get("color"), version = snapshot.get("version"), revision = snapshot.get("revision") ?? 1, storedKind = snapshot.get("kind"), iconId = snapshot.get("iconId") ?? null, iconName = snapshot.get("iconName") ?? null;
   const kind: QrCodeKind = QR_CODE_KINDS.includes(storedKind as QrCodeKind) ? storedKind as QrCodeKind : typeof content === "string" && content.startsWith("mailto:") ? "email" : typeof content === "string" && content.startsWith("tel:") ? "phone" : typeof content === "string" && content.startsWith("WIFI:") ? "wifi" : typeof content === "string" && /^https?:\/\//i.test(content) ? "url" : "text";
   return snapshot.exists && snapshot.get("status") === "active" && typeof name === "string" && typeof content === "string" && typeof color === "string" && Number.isSafeInteger(version) && Number.isSafeInteger(revision)
-    ? { id: snapshot.id, name, content, kind, iconId, iconName, color, version, revision } : null;
+    ? { id: snapshot.id, name, content, kind, iconId, iconName, color, version, revision, scanCount: Number.isSafeInteger(snapshot.get("scanCount")) ? snapshot.get("scanCount") : 0 } : null;
 }
 const production: Dependencies = {
   authenticate: authenticateActiveAccount,
