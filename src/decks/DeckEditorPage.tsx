@@ -46,6 +46,8 @@ export default function DeckEditorPage({
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [presentationPasscode, setPresentationPasscode] = useState("");
+  const [publicationError, setPublicationError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [conflictDeck, setConflictDeck] = useState<DeckSummary | null>(null);
   const [deckSlides, setDeckSlides] = useState<DeckSlide[]>([]);
@@ -188,7 +190,20 @@ export default function DeckEditorPage({
       setIsDuplicating(false);
     }
   }
-  async function togglePublication() { if (state.kind !== "ready") return; setIsPublishing(true); try { const next = state.deck.publicationStatus === "published" ? "draft" : "published"; await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/decks/${encodeURIComponent(deckId)}/publication`, { method: "POST", headers: { authorization: `Bearer ${await user.getIdToken()}`, "content-type": "application/json" }, body: JSON.stringify({ publicationStatus: next }) }); applyDeck({ ...state.deck, publicationStatus: next, version: state.deck.version + 1 }); } finally { setIsPublishing(false); } }
+  async function togglePublication() {
+    if (state.kind !== "ready") return;
+    setIsPublishing(true);
+    setPublicationError("");
+    try {
+      const next = state.deck.publicationStatus === "published" ? "draft" : "published";
+      const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/decks/${encodeURIComponent(deckId)}/publication`, { method: "POST", headers: { authorization: `Bearer ${await user.getIdToken()}`, "content-type": "application/json" }, body: JSON.stringify({ publicationStatus: next, ...(next === "published" ? { passcode: presentationPasscode } : {}) }) });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body && typeof body === "object" && "error" in body && typeof body.error === "string" ? body.error : "QRousel could not update this presentation.");
+      applyDeck({ ...state.deck, publicationStatus: next, version: state.deck.version + 1 });
+      setPresentationPasscode("");
+    } catch (error) { setPublicationError(error instanceof Error ? error.message : "QRousel could not update this presentation."); }
+    finally { setIsPublishing(false); }
+  }
 
   if (state.kind === "loading") {
     return (
@@ -325,6 +340,12 @@ export default function DeckEditorPage({
             </div>
             <small>Used by every slide without its own timing override.</small>
           </label>
+          <label>
+            <span>Presentation passcode</span>
+            <input type="password" minLength={4} maxLength={64} value={presentationPasscode} disabled={!canEdit || state.deck.publicationStatus === "published"} onChange={(event) => setPresentationPasscode(event.target.value)} placeholder="Optional — set before publishing" />
+            <small>{state.deck.publicationStatus === "published" ? "Unpublish, set a new passcode, then publish again to change access." : "Leave blank for a public presentation. Passcodes must be 4–64 characters."}</small>
+          </label>
+          {publicationError && <p className="auth-error" role="alert">{publicationError}</p>}
           {saveError && (
             <p className="auth-error" role="alert">
               {saveError}
