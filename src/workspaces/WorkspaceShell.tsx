@@ -36,6 +36,7 @@ import {
 } from "../../lib/workspaces/resource-editor-navigation";
 import { createInvitation, requestInvitations, type WorkspaceInvitation } from "./invitation-client";
 import { requestMembers, revokeMember, updateMemberRole, type WorkspaceMember } from "./members-client";
+import { deleteResource, requestTrash, restoreResource, type TrashItem } from "./trash-client";
 
 type WorkspaceShellProps = {
   workspace: WorkspaceSummary;
@@ -251,6 +252,8 @@ function WorkspacePage({
       <SlideLibraryPage
         library={slideLibrary}
         role={workspace.role}
+        user={user}
+        workspaceId={workspace.id}
         onCreatePage={() => {
           window.location.assign(
             workspaceResourceEditorPath(workspace.id, "slides", "new"),
@@ -285,6 +288,8 @@ function WorkspacePage({
         library={qrCodeLibrary}
         role={workspace.role}
         icons={iconLibrary.icons}
+        user={user}
+        workspaceId={workspace.id}
         onCreatePage={() =>
           window.location.assign(
             workspaceResourceEditorPath(workspace.id, "qr-codes", "new"),
@@ -297,7 +302,7 @@ function WorkspacePage({
   if (section === "icons") {
     const editor = resolveWorkspaceResourceEditor(window.location.pathname, workspace.id, "icons");
     if (editor?.mode === "new") return <IconCreatePage library={iconLibrary} role={workspace.role} onBack={() => navigate("icons")} />;
-    return <IconLibraryPage library={iconLibrary} role={workspace.role} onCreatePage={() => window.location.assign(workspaceResourceEditorPath(workspace.id, "icons", "new"))} />;
+    return <IconLibraryPage library={iconLibrary} role={workspace.role} user={user} workspaceId={workspace.id} onCreatePage={() => window.location.assign(workspaceResourceEditorPath(workspace.id, "icons", "new"))} />;
   }
 
   if (section in RESOURCE_COPY) {
@@ -326,24 +331,7 @@ function WorkspacePage({
   }
 
   if (section === "trash") {
-    return (
-      <>
-        <header className="workspace-page-heading">
-          <div>
-            <p className="workspace-kicker">Recovery</p>
-            <h1>Trash</h1>
-            <p>Restore deleted resources before their retention period ends.</p>
-          </div>
-        </header>
-        <section className="workspace-library-empty">
-          <span className="workspace-empty-mark" aria-hidden="true">
-            <NavigationGlyph section="trash" />
-          </span>
-          <h2>Trash is empty</h2>
-          <p>Deleted workspace resources will appear here.</p>
-        </section>
-      </>
-    );
+    return <TrashPage user={user} workspaceId={workspace.id} role={workspace.role} />;
   }
 
   return (
@@ -436,6 +424,14 @@ function InvitePanel({ user, workspaceId, roles, onCreated }: { user: User; work
   const [link, setLink] = useState(""); const [error, setError] = useState("");
   async function create() { setError(""); try { const token = await createInvitation(user, workspaceId, role); setLink(`${window.location.origin}/app?invite=${encodeURIComponent(token)}`); onCreated({ token, role, status: "active" }); } catch (reason) { setError(reason instanceof Error ? reason.message : "QRousel could not create an invitation."); } }
   return <section className="workspace-list-card invite-panel"><div><strong>Invite a member</strong><span>Generate a single-use link for an existing or new QRousel account.</span></div><select value={role} onChange={(event) => setRole(event.target.value as Exclude<WorkspaceRole, "founder">)}>{roles.map((item) => <option key={item}>{item}</option>)}</select><button type="button" onClick={() => void create()}>Generate invite link</button>{link && <label><span>Single-use link</span><input readOnly value={link} onFocus={(event) => event.currentTarget.select()} /></label>}{error && <p className="auth-error">{error}</p>}</section>;
+}
+
+function TrashPage({ user, workspaceId, role }: { user: User; workspaceId: string; role: WorkspaceRole }) {
+  const [items, setItems] = useState<TrashItem[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [busyId, setBusyId] = useState("");
+  useEffect(() => { let active = true; void requestTrash(user, workspaceId).then((next) => { if (active) { setItems(next); setLoading(false); } }, (reason: unknown) => { if (active) { setError(reason instanceof Error ? reason.message : "QRousel could not load trash."); setLoading(false); } }); return () => { active = false; }; }, [user, workspaceId]);
+  async function restore(item: TrashItem) { setBusyId(item.id); setError(""); try { await restoreResource(user, workspaceId, item.type, item.id); setItems((current) => current.filter((candidate) => candidate.id !== item.id)); } catch (reason) { setError(reason instanceof Error ? reason.message : "QRousel could not restore this resource."); } finally { setBusyId(""); } }
+  async function remove(item: TrashItem) { if (!window.confirm(`Permanently delete “${item.name}”? This cannot be undone.`)) return; setBusyId(item.id); setError(""); try { await deleteResource(user, workspaceId, item.type, item.id); setItems((current) => current.filter((candidate) => candidate.id !== item.id)); } catch (reason) { setError(reason instanceof Error ? reason.message : "QRousel could not permanently delete this resource."); } finally { setBusyId(""); } }
+  return <><header className="workspace-page-heading"><div><p className="workspace-kicker">Recovery</p><h1>Trash</h1><p>Restore archived resources, or permanently delete them if you are the founder.</p></div></header>{loading && <section className="workspace-library-empty"><p>Loading trash…</p></section>}{!loading && items.length === 0 && <section className="workspace-library-empty"><span className="workspace-empty-mark" aria-hidden="true"><NavigationGlyph section="trash" /></span><h2>Trash is empty</h2><p>Archived workspace resources will appear here.</p></section>}{!loading && items.length > 0 && <section className="workspace-member-list">{items.map((item) => <article className="workspace-list-card" key={`${item.type}-${item.id}`}><div><strong>{item.name}</strong><span>{item.type.replace("-", " ")}</span></div><button type="button" disabled={busyId === item.id} onClick={() => void restore(item)}>Restore</button>{role === "founder" && <button className="workspace-text-button" type="button" disabled={busyId === item.id} onClick={() => void remove(item)}>Delete forever</button>}</article>)}</section>}{error && <p className="auth-error" role="alert">{error}</p>}</>;
 }
 
 export default function WorkspaceShell({
