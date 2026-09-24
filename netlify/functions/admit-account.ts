@@ -27,7 +27,7 @@ function readBearerToken(request: Request): string | null {
 
 function isGoogleIdentity(token: DecodedIdToken): boolean {
   return (
-    token.firebase.sign_in_provider === "google.com" &&
+    (token.firebase.sign_in_provider === "google.com" || token.firebase.sign_in_provider === "emailLink") &&
     token.email_verified === true &&
     typeof token.email === "string"
   );
@@ -140,7 +140,7 @@ export default async function handler(request: Request): Promise<Response> {
       true,
     );
     if (!isGoogleIdentity(token)) {
-      return jsonResponse({ error: "Google sign-in is required." }, 403);
+      return jsonResponse({ error: "A verified Google or email-link sign-in is required." }, 403);
     }
 
     const result = await admitAccount(token);

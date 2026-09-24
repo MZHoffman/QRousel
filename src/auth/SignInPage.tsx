@@ -2,6 +2,8 @@ import { onIdTokenChanged, type Auth, type User } from "firebase/auth";
 import { useCallback, useEffect, useState } from "react";
 import {
   getFirebaseClientAuth,
+  completeEmailSignInLink,
+  sendEmailSignInLink,
   signInWithGoogle,
   signOutOfQRousel,
 } from "../../lib/firebase/auth";
@@ -51,6 +53,7 @@ export default function SignInPage() {
   );
   const [user, setUser] = useState<User | null>(null);
   const [message, setMessage] = useState(firebaseSetup.error);
+  const [email, setEmail] = useState("");
   const creatingAccount = new URLSearchParams(window.location.search).get("intent") === "create-account";
 
   const admit = useCallback(
@@ -106,6 +109,8 @@ export default function SignInPage() {
     };
   }, [admit, firebaseSetup]);
 
+  useEffect(() => { if (firebaseSetup.auth) void completeEmailSignInLink().catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Email sign-in failed.")); }, [firebaseSetup.auth]);
+
   async function beginSignIn() {
     setMessage("");
     try {
@@ -121,6 +126,8 @@ export default function SignInPage() {
     if (user === null) return;
     await admit(user, () => true);
   }
+
+  async function beginEmailSignIn() { try { await sendEmailSignInLink(email.trim()); setMessage("Check your inbox for your QRousel sign-in link."); } catch (error) { setMessage(error instanceof Error ? error.message : "QRousel could not send a sign-in link."); } }
 
   if (sessionState === "active" && user !== null) {
     return <WorkspaceGate user={user} onSignOut={signOutOfQRousel} />;
@@ -217,6 +224,7 @@ export default function SignInPage() {
               <span aria-hidden="true">G</span>
               {creatingAccount ? "Create account with Google" : "Continue with Google"}
             </button>
+            <label className="auth-email-link"><span>Or sign in by email</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" /><button className="auth-secondary-button" type="button" disabled={!email.trim()} onClick={() => void beginEmailSignIn()}>Email me a sign-in link</button></label>
           </div>
         )}
       </section>
