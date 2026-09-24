@@ -3,7 +3,7 @@ import type { WorkspaceSummary } from "../../lib/workspaces/api-response.ts";
 import { decideWorkspaceCreation } from "../../lib/workspaces/creation.ts";
 import { authenticateActiveAccount } from "./_shared/authenticated-account.ts";
 import { getFirebaseAdminApp } from "./_shared/firebase-admin.ts";
-import { BUILT_IN_ICONS } from "../../lib/icons/built-in.ts";
+import { BUILT_IN_ICONS, BUILT_IN_ICON_SET_VERSION } from "../../lib/icons/built-in.ts";
 
 export type AuthenticatedWorkspaceAccount = {
   uid: string;
@@ -182,6 +182,7 @@ const productionDependencies: WorkspaceHandlerDependencies = {
         founderUid: account.uid,
         name: decision.name,
         iconCount: BUILT_IN_ICONS.length,
+        builtInIconSetVersion: BUILT_IN_ICON_SET_VERSION,
         status: "active",
         updatedAt: now,
       });
@@ -202,7 +203,7 @@ const productionDependencies: WorkspaceHandlerDependencies = {
       });
       for (const icon of BUILT_IN_ICONS) {
         const iconRef = workspaceRef.collection("icons").doc();
-        transaction.set(iconRef, { ...icon, status: "active", builtIn: true, workspaceId: workspaceRef.id, createdAt: now, createdBy: "system", updatedAt: now });
+        transaction.set(iconRef, { ...icon, status: "active", builtIn: true, builtInSetVersion: BUILT_IN_ICON_SET_VERSION, workspaceId: workspaceRef.id, createdAt: now, createdBy: "system", updatedAt: now });
       }
 
       return {
