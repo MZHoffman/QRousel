@@ -1,6 +1,7 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import type { User } from "firebase/auth";
 import { deleteAccount } from "../auth/delete-account-client";
+import { markWorkspaceNotificationRead, requestWorkspaceNotifications, type WorkspaceNotification } from "./notification-client";
 import type {
   WorkspaceRole,
   WorkspaceSummary,
@@ -445,6 +446,7 @@ export default function WorkspaceShell({
   onSignOut,
 }: WorkspaceShellProps) {
   const [accountDeletionError, setAccountDeletionError] = useState("");
+  const [notifications, setNotifications] = useState<WorkspaceNotification[]>([]);
   const [section, setSection] = useState<WorkspaceSection>(() =>
     resolveWorkspaceSection(window.location.pathname),
   );
@@ -467,6 +469,15 @@ export default function WorkspaceShell({
     window.addEventListener("popstate", handleHistoryChange);
     return () => window.removeEventListener("popstate", handleHistoryChange);
   }, [workspace.id]);
+
+  useEffect(() => {
+    let current = true;
+    void requestWorkspaceNotifications(user, workspace.id).then(
+      (items) => { if (current) setNotifications(items); },
+      () => { if (current) setNotifications([]); },
+    );
+    return () => { current = false; };
+  }, [user, workspace.id]);
 
   function navigate(nextSection: WorkspaceSection) {
     const path = workspaceSectionPath(workspace.id, nextSection);
@@ -517,6 +528,15 @@ export default function WorkspaceShell({
       setAccountDeletionError(
         reason instanceof Error ? reason.message : "QRousel could not delete this account.",
       );
+    }
+  }
+
+  async function dismissNotification(notification: WorkspaceNotification) {
+    setNotifications((items) => items.filter((item) => item.id !== notification.id));
+    try {
+      await markWorkspaceNotificationRead(user, workspace.id, notification.id);
+    } catch {
+      setNotifications((items) => [notification, ...items]);
     }
   }
 
@@ -587,6 +607,12 @@ export default function WorkspaceShell({
       </aside>
 
       <div className="workspace-main-column">
+        {notifications.map((notification) => (
+          <section className="workspace-notice" role="status" key={notification.id}>
+            <div><strong>Workspace founder changed</strong><p>{notification.message}</p></div>
+            <button type="button" onClick={() => void dismissNotification(notification)}>Got it</button>
+          </section>
+        ))}
         <header className="workspace-mobile-header">
           <a className="workspace-brand" href="/">
             <span className="workspace-brand-mark" aria-hidden="true">

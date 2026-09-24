@@ -540,6 +540,27 @@ button {
   min-width: 0;
 }
 
+.workspace-notice {
+  position: fixed;
+  z-index: 30;
+  top: 22px;
+  right: 22px;
+  width: min(420px, calc(100vw - 44px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(19, 39, 31, 0.16);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 18px 50px rgba(9, 24, 18, 0.18);
+}
+
+.workspace-notice strong { font-size: 13px; }
+.workspace-notice p { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.workspace-notice button { flex: 0 0 auto; padding: 8px 10px; border: 0; border-radius: 8px; background: var(--green); color: white; cursor: pointer; font: inherit; font-size: 11px; font-weight: 800; }
+
 .workspace-mobile-header {
   display: none;
 }
@@ -2339,6 +2360,8 @@ label:has(input:focus-visible) {
     border-bottom: 1px solid var(--line);
     background: rgba(255, 253, 248, 0.85);
   }
+
+  .workspace-notice { top: 76px; right: 16px; width: calc(100vw - 32px); }
 
   .workspace-mobile-header .workspace-brand {
     color: var(--ink);
