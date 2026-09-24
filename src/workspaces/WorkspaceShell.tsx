@@ -281,7 +281,7 @@ function WorkspacePage({
     }
     if (editor?.mode === "edit") {
       const code = qrCodeLibrary.codes.find((item) => item.id === editor.resourceId);
-      if (code) return <QrCodeEditPage library={qrCodeLibrary} role={workspace.role} code={code} icons={iconLibrary.icons} onBack={() => navigate("qr-codes")} />;
+      if (code) return <QrCodeEditPage library={qrCodeLibrary} role={workspace.role} code={code} icons={iconLibrary.icons} user={user} workspaceId={workspace.id} onBack={() => navigate("qr-codes")} />;
     }
     return (
       <QrCodeLibraryPage
