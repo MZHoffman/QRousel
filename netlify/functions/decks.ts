@@ -394,6 +394,9 @@ const productionDependencies: DeckHandlerDependencies = {
       const membershipSnapshot = await transaction.get(membershipRef);
       const workspaceSnapshot = await transaction.get(workspaceRef);
       const sourceDeckSnapshot = await transaction.get(sourceDeckRef);
+      const sourceSlidesSnapshot = await transaction.get(
+        sourceDeckRef.collection("slides").orderBy("position"),
+      );
       const role = membershipSnapshot.get("role");
       if (
         !membershipSnapshot.exists ||
@@ -422,6 +425,10 @@ const productionDependencies: DeckHandlerDependencies = {
       });
       if (decision.kind === "limit") return decision;
 
+      const sourceSlides = sourceSlidesSnapshot.docs.filter(
+        (slide) => slide.get("status") === "active",
+      );
+
       const now = FieldValue.serverTimestamp();
       transaction.update(workspaceRef, {
         deckCount: decision.nextDeckCount,
@@ -434,7 +441,7 @@ const productionDependencies: DeckHandlerDependencies = {
           decision.defaultDisplayDurationSeconds,
         name: decision.name,
         publicationStatus: decision.publicationStatus,
-        slideCount: decision.slideCount,
+        slideCount: sourceSlides.length,
         sourceDeckId,
         status: "active",
         updatedAt: now,
@@ -451,6 +458,20 @@ const productionDependencies: DeckHandlerDependencies = {
         type: "deck.duplicated",
         workspaceId,
       });
+      sourceSlides.forEach((slide, position) => {
+        transaction.set(duplicateDeckRef.collection("slides").doc(), {
+          slideId: slide.get("slideId"),
+          title: slide.get("title"),
+          description: slide.get("description"),
+          qrCodeId: slide.get("qrCodeId") ?? null,
+          qrCodeName: slide.get("qrCodeName") ?? null,
+          position,
+          displayDurationSeconds: slide.get("displayDurationSeconds") ?? null,
+          status: "active",
+          createdAt: now,
+          updatedAt: now,
+        });
+      });
 
       return {
         kind: "duplicated" as const,
@@ -460,7 +481,7 @@ const productionDependencies: DeckHandlerDependencies = {
           publicationStatus: decision.publicationStatus,
           defaultDisplayDurationSeconds:
             decision.defaultDisplayDurationSeconds,
-          slideCount: decision.slideCount,
+          slideCount: sourceSlides.length,
           version: decision.version,
         },
       };
