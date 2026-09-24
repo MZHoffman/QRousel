@@ -88,6 +88,13 @@ export function createWorkspaceHandler(dependencies: WorkspaceHandlerDependencie
       return jsonResponse({ workspace: result.workspace }, 201);
     }
 
+    if (request.method === "DELETE") {
+      const body: unknown = await request.json().catch(() => null);
+      if (!body || typeof body !== "object" || !("workspaceId" in body) || !("confirmation" in body) || typeof body.workspaceId !== "string" || typeof body.confirmation !== "string") return jsonResponse({ error: "Workspace confirmation is required." }, 400);
+      const firestore = getFirestore(getFirebaseAdminApp()); const workspace = firestore.doc(`workspaces/${body.workspaceId}`), membership = firestore.doc(`workspaceMemberships/${body.workspaceId}_${account.uid}`);
+      const result = await firestore.runTransaction(async (transaction) => { const [current, member] = await Promise.all([transaction.get(workspace), transaction.get(membership)]); if (!current.exists || current.get("status") !== "active" || member.get("role") !== "founder") return false; if (body.confirmation !== current.get("name")) throw new Error("Type the workspace name to confirm."); const now = FieldValue.serverTimestamp(); transaction.update(workspace, { status: "archived", archivedAt: now, archivedBy: account.uid, updatedAt: now }); transaction.set(workspace.collection("activity").doc(), { type: "workspace.updated", actorUid: account.uid, createdAt: now, resourceId: workspace.id, resourceName: current.get("name"), resourceType: "workspace", changedFields: ["workspace archived"], workspaceId: workspace.id }); return true; }); return result ? jsonResponse({ ok: true }) : jsonResponse({ error: "Only the workspace founder can delete this workspace." }, 403);
+    }
+
     return jsonResponse({ error: "Method not allowed." }, 405);
   };
 }
