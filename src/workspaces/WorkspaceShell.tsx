@@ -261,11 +261,10 @@ function WorkspacePage({
         user={user}
         workspaceId={workspace.id}
         onCreatePage={() => {
-          window.location.assign(
-            workspaceResourceEditorPath(workspace.id, "slides", "new"),
-          );
+          window.history.pushState({}, "", workspaceResourceEditorPath(workspace.id, "slides", "new"));
+          window.dispatchEvent(new PopStateEvent("popstate"));
         }}
-        onEditPage={(slideId) => window.location.assign(workspaceResourceEditorPath(workspace.id, "slides", "edit", slideId))}
+        onEditPage={(slideId) => { window.history.pushState({}, "", workspaceResourceEditorPath(workspace.id, "slides", "edit", slideId)); window.dispatchEvent(new PopStateEvent("popstate")); }}
       />
     );
   }
@@ -297,18 +296,16 @@ function WorkspacePage({
         user={user}
         workspaceId={workspace.id}
         onCreatePage={() =>
-          window.location.assign(
-            workspaceResourceEditorPath(workspace.id, "qr-codes", "new"),
-          )
+          { window.history.pushState({}, "", workspaceResourceEditorPath(workspace.id, "qr-codes", "new")); window.dispatchEvent(new PopStateEvent("popstate")); }
         }
-        onEditPage={(qrCodeId) => window.location.assign(workspaceResourceEditorPath(workspace.id, "qr-codes", "edit", qrCodeId))}
+        onEditPage={(qrCodeId) => { window.history.pushState({}, "", workspaceResourceEditorPath(workspace.id, "qr-codes", "edit", qrCodeId)); window.dispatchEvent(new PopStateEvent("popstate")); }}
       />
     );
   }
   if (section === "icons") {
     const editor = resolveWorkspaceResourceEditor(window.location.pathname, workspace.id, "icons");
     if (editor?.mode === "new") return <IconCreatePage library={iconLibrary} role={workspace.role} onBack={() => navigate("icons")} />;
-    return <IconLibraryPage library={iconLibrary} role={workspace.role} user={user} workspaceId={workspace.id} onCreatePage={() => window.location.assign(workspaceResourceEditorPath(workspace.id, "icons", "new"))} />;
+    return <IconLibraryPage library={iconLibrary} role={workspace.role} user={user} workspaceId={workspace.id} onCreatePage={() => { window.history.pushState({}, "", workspaceResourceEditorPath(workspace.id, "icons", "new")); window.dispatchEvent(new PopStateEvent("popstate")); }} />;
   }
 
   if (section in RESOURCE_COPY) {

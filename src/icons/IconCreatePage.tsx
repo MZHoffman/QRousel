@@ -1,36 +1,43 @@
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type PointerEvent } from "react";
 import type { WorkspaceRole } from "../../lib/workspaces/api-response";
 import type { useIconLibrary } from "./use-icon-library";
 
-function renderCrop(file: File, zoom: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    const url = URL.createObjectURL(file);
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 512; canvas.height = 512;
-      const context = canvas.getContext("2d");
-      if (!context) return reject(new Error("Canvas is unavailable."));
-      const cropSize = Math.min(image.width, image.height) / zoom;
-      context.drawImage(image, (image.width - cropSize) / 2, (image.height - cropSize) / 2, cropSize, cropSize, 0, 0, 512, 512);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/webp", 0.88));
-    };
-    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error("The image could not be read.")); };
-    image.src = url;
-  });
+type Crop = { x: number; y: number; width: number; height: number };
+type Handle = "move" | "nw" | "ne" | "sw" | "se" | "n" | "e" | "s" | "w";
+const RATIO_PRESETS = [{ label: "Free", value: null }, { label: "1:1", value: 1 }, { label: "4:3", value: 4 / 3 }, { label: "3:4", value: 3 / 4 }, { label: "4:5", value: 4 / 5 }, { label: "16:9", value: 16 / 9 }, { label: "9:16", value: 9 / 16 }] as const;
+const DEFAULT_CROP: Crop = { x: 20, y: 20, width: 60, height: 60 };
+
+function clamp(value: number, min: number, max: number) { return Math.max(min, Math.min(value, max)); }
+function cropData(image: HTMLImageElement, crop: Crop) {
+  const canvas = document.createElement("canvas"), sx = image.naturalWidth * crop.x / 100, sy = image.naturalHeight * crop.y / 100, sw = image.naturalWidth * crop.width / 100, sh = image.naturalHeight * crop.height / 100;
+  const longest = Math.max(sw, sh), scale = Math.min(1, 1024 / longest);
+  canvas.width = Math.max(1, Math.round(sw * scale)); canvas.height = Math.max(1, Math.round(sh * scale));
+  const context = canvas.getContext("2d"); if (!context) throw new Error("Canvas is unavailable.");
+  context.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/webp", 0.92);
+}
+function autoTrim(image: HTMLImageElement): Crop {
+  const canvas = document.createElement("canvas"), context = canvas.getContext("2d");
+  if (!context) return DEFAULT_CROP;
+  canvas.width = image.naturalWidth; canvas.height = image.naturalHeight; context.drawImage(image, 0, 0);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data, [r, g, b, a] = pixels;
+  let minX = canvas.width, minY = canvas.height, maxX = -1, maxY = -1;
+  for (let y = 0; y < canvas.height; y += 2) for (let x = 0; x < canvas.width; x += 2) { const i = (y * canvas.width + x) * 4, difference = Math.max(Math.abs(pixels[i] - r), Math.abs(pixels[i + 1] - g), Math.abs(pixels[i + 2] - b), Math.abs(pixels[i + 3] - a)); if (difference > 50) { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); } }
+  if (maxX < 0) return DEFAULT_CROP;
+  const padX = canvas.width * 0.02, padY = canvas.height * 0.02, left = clamp(minX - padX, 0, canvas.width), top = clamp(minY - padY, 0, canvas.height), right = clamp(maxX + padX, 1, canvas.width), bottom = clamp(maxY + padY, 1, canvas.height);
+  return { x: left / canvas.width * 100, y: top / canvas.height * 100, width: (right - left) / canvas.width * 100, height: (bottom - top) / canvas.height * 100 };
 }
 
 export default function IconCreatePage({ library, role, onBack }: { library: ReturnType<typeof useIconLibrary>; role: WorkspaceRole; onBack: () => void }) {
-  const [name, setName] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [preview, setPreview] = useState("");
-  const [processing, setProcessing] = useState(false);
-  const previewLabel = useMemo(() => file ? `${file.name}, cropped square` : "No image selected", [file]);
-  async function refreshCrop(nextFile: File, nextZoom: number) { setProcessing(true); try { setPreview(await renderCrop(nextFile, nextZoom)); } catch { setPreview(""); } finally { setProcessing(false); } }
-  async function choose(event: ChangeEvent<HTMLInputElement>) { const selected = event.target.files?.[0]; if (selected) { setFile(selected); setZoom(1); await refreshCrop(selected, 1); } }
-  function updateZoom(nextZoom: number) { setZoom(nextZoom); if (file) void refreshCrop(file, nextZoom); }
-  async function submit(event: FormEvent) { event.preventDefault(); if (preview && await library.create(name, preview)) onBack(); }
-  return <><button className="deck-editor-back" type="button" onClick={onBack}><span>←</span> Icons</button><header className="deck-editor-heading"><div><span className="deck-status">new reusable icon</span><h1>Add an icon</h1><p>Upload an image, then save its square crop for every QR code in this workspace.</p></div></header><form className="deck-settings-card deck-create-page" onSubmit={submit}><label><span>Name</span><input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Event logo" /></label><label><span>Image</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={choose} /></label>{file && <label><span>Crop zoom: {zoom.toFixed(1)}×</span><input type="range" min="1" max="3" step="0.1" value={zoom} onChange={(event) => updateZoom(Number(event.target.value))} /></label>}{preview && <figure className="icon-editor-preview"><img src={preview} alt={previewLabel} /><figcaption>{previewLabel}</figcaption></figure>}{library.error && <p className="auth-error">{library.error}</p>}<div className="deck-settings-actions"><button type="button" onClick={onBack}>Cancel</button><button disabled={role === "viewer" || !name.trim() || !preview || processing}>{processing ? "Preparing…" : "Save icon"}</button></div></form></>;
+  const [name, setName] = useState(""), [source, setSource] = useState(""), [fileName, setFileName] = useState(""), [crop, setCrop] = useState<Crop>(DEFAULT_CROP), [ratio, setRatio] = useState<number | null>(null), [processing, setProcessing] = useState(false), [error, setError] = useState("");
+  const imageRef = useRef<HTMLImageElement>(null), canvasRef = useRef<HTMLDivElement>(null), drag = useRef<{ handle: Handle; startX: number; startY: number; crop: Crop } | null>(null);
+  function loadFile(file: File) { if (!file.type.startsWith("image/")) { setError("Choose a PNG, JPG, or WebP image."); return; } const reader = new FileReader(); reader.onload = () => { setSource(String(reader.result)); setFileName(file.name); setCrop(DEFAULT_CROP); setRatio(null); setError(""); }; reader.readAsDataURL(file); }
+  function choose(event: ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; if (file) loadFile(file); }
+  useEffect(() => { const paste = (event: ClipboardEvent) => { const item = [...event.clipboardData?.items ?? []].find((candidate) => candidate.type.startsWith("image/")); const file = item?.getAsFile(); if (file) loadFile(file); }; window.addEventListener("paste", paste); return () => window.removeEventListener("paste", paste); }, []);
+  function applyRatio(next: number | null) { setRatio(next); if (!next || !imageRef.current) return; const imageRatio = imageRef.current.naturalWidth / imageRef.current.naturalHeight, normalized = next / imageRatio; setCrop((current) => { let width = current.width, height = width / normalized; if (height > 100) { height = 100; width = height * normalized; } if (width > 100) { width = 100; height = width / normalized; } return { x: clamp(current.x + (current.width - width) / 2, 0, 100 - width), y: clamp(current.y + (current.height - height) / 2, 0, 100 - height), width, height }; }); }
+  function pointerDown(event: PointerEvent<HTMLButtonElement>, handle: Handle) { event.preventDefault(); event.stopPropagation(); drag.current = { handle, startX: event.clientX, startY: event.clientY, crop }; event.currentTarget.setPointerCapture(event.pointerId); }
+  function pointerMove(event: PointerEvent<HTMLDivElement>) { const active = drag.current, bounds = canvasRef.current?.getBoundingClientRect(); if (!active || !bounds) return; const dx = (event.clientX - active.startX) / bounds.width * 100, dy = (event.clientY - active.startY) / bounds.height * 100, start = active.crop; if (active.handle === "move") { setCrop({ ...start, x: clamp(start.x + dx, 0, 100 - start.width), y: clamp(start.y + dy, 0, 100 - start.height) }); return; } let x = start.x, y = start.y, width = start.width, height = start.height; if (active.handle.includes("w")) { x = clamp(start.x + dx, 0, start.x + start.width - 5); width = start.width + start.x - x; } if (active.handle.includes("e")) width = clamp(start.width + dx, 5, 100 - start.x); if (active.handle.includes("n")) { y = clamp(start.y + dy, 0, start.y + start.height - 5); height = start.height + start.y - y; } if (active.handle.includes("s")) height = clamp(start.height + dy, 5, 100 - start.y); if (ratio && imageRef.current) { const normalized = ratio / (imageRef.current.naturalWidth / imageRef.current.naturalHeight); if (active.handle === "n" || active.handle === "s") width = height * normalized; else height = width / normalized; if (x + width > 100) width = 100 - x; if (y + height > 100) height = 100 - y; } setCrop({ x, y, width, height }); }
+  async function submit(event: FormEvent) { event.preventDefault(); if (!imageRef.current || !name.trim()) return; setProcessing(true); setError(""); try { const output = cropData(imageRef.current, crop); if (await library.create(name, output)) onBack(); } catch (reason) { setError(reason instanceof Error ? reason.message : "QRousel could not prepare this icon."); } finally { setProcessing(false); } }
+  const handles: Handle[] = ratio ? ["nw", "ne", "sw", "se"] : ["nw", "ne", "sw", "se", "n", "e", "s", "w"];
+  return <><button className="deck-editor-back" type="button" onClick={onBack}><span>←</span> Icons</button><header className="deck-editor-heading"><div><span className="deck-status">new reusable icon</span><h1>Add an icon</h1><p>Upload, paste, auto-trim, and precisely crop a reusable icon for every QR code in this workspace.</p></div></header><form className="deck-settings-card deck-create-page icon-create-page" onSubmit={submit}><label><span>Name</span><input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Event logo" /></label><label><span>Image</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={choose} /><small>You can also paste an image from your clipboard.</small></label>{source && <><section className="icon-crop-tools" aria-label="Crop tools"><div><strong>Crop ratio</strong>{RATIO_PRESETS.map((preset) => <button className={ratio === preset.value ? "is-selected" : ""} key={preset.label} type="button" onClick={() => applyRatio(preset.value)}>{preset.label}</button>)}</div><div><button type="button" onClick={() => imageRef.current && setCrop(autoTrim(imageRef.current))}>Auto trim</button><button type="button" onClick={() => { setCrop(DEFAULT_CROP); setRatio(null); }}>Reset crop</button></div></section><section className="icon-crop-workspace"><div className="icon-crop-canvas" ref={canvasRef} onPointerMove={pointerMove} onPointerUp={() => { drag.current = null; }}><img ref={imageRef} src={source} alt="Crop target" draggable={false} onLoad={() => imageRef.current && setCrop(autoTrim(imageRef.current))} /><div className="icon-crop-window" style={{ left: `${crop.x}%`, top: `${crop.y}%`, width: `${crop.width}%`, height: `${crop.height}%` }}><button type="button" className="icon-crop-move" aria-label="Move crop" onPointerDown={(event) => pointerDown(event, "move")} />{handles.map((handle) => <button key={handle} type="button" className={`icon-crop-handle icon-crop-handle-${handle}`} aria-label={`Resize crop ${handle}`} onPointerDown={(event) => pointerDown(event, handle)} />)}</div></div><figure className="icon-editor-preview"><img src={imageRef.current ? cropData(imageRef.current, crop) : source} alt={`${fileName} crop preview`} /><figcaption>{fileName} · drag the frame or its handles to position the crop.</figcaption></figure></section></>}{(error || library.error) && <p className="auth-error">{error || library.error}</p>}<div className="deck-settings-actions"><button type="button" onClick={onBack}>Cancel</button><button disabled={role === "viewer" || !name.trim() || !source || processing}>{processing ? "Preparing…" : "Save icon"}</button></div></form></>;
 }
