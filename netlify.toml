@@ -24,6 +24,16 @@ from = "/api/workspaces"
   status = 200
 
 [[redirects]]
+  from = "/api/workspaces/:workspaceId/trash/:type/:resourceId"
+  to = "/.netlify/functions/trash?workspaceId=:workspaceId&type=:type&resourceId=:resourceId"
+  status = 200
+
+[[redirects]]
+  from = "/api/workspaces/:workspaceId/trash/:type"
+  to = "/.netlify/functions/trash?workspaceId=:workspaceId&type=:type"
+  status = 200
+
+[[redirects]]
   from = "/api/workspaces/:workspaceId/activity"
   to = "/.netlify/functions/activity?workspaceId=:workspaceId"
   status = 200
