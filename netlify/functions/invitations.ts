@@ -1,0 +1,21 @@
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { WORKSPACE_ROLES, type WorkspaceRole } from "../../lib/workspaces/api-response.ts";
+import { authenticateActiveAccount } from "./_shared/authenticated-account.ts";
+import { getFirebaseAdminApp } from "./_shared/firebase-admin.ts";
+
+const headers = { "content-type": "application/json; charset=utf-8" };
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
+const token = (request: Request) => { const value = request.headers.get("authorization"); return value?.startsWith("Bearer ") ? value.slice(7).trim() : null; };
+const canInvite = (role: WorkspaceRole) => role === "founder" || role === "owner" || role === "admin";
+const inviteRole = (value: unknown): value is Exclude<WorkspaceRole, "founder"> => typeof value === "string" && value !== "founder" && WORKSPACE_ROLES.includes(value as WorkspaceRole);
+
+export default async function invitations(request: Request) {
+  try {
+    const idToken = token(request); if (!idToken) return json({ error: "Authentication required." }, 401);
+    const account = await authenticateActiveAccount(idToken); if (!account) return json({ error: "Authentication required." }, 401);
+    const url = new URL(request.url), workspaceId = url.searchParams.get("workspaceId")?.trim(), inviteToken = url.searchParams.get("token")?.trim(); const db = getFirestore(getFirebaseAdminApp());
+    if (request.method === "POST" && workspaceId && !inviteToken) { const body: unknown = await request.json().catch(() => null); if (!body || typeof body !== "object" || !("role" in body) || !inviteRole(body.role)) return json({ error: "A valid member role is required." }, 400); const membership = await db.doc(`workspaceMemberships/${workspaceId}_${account.uid}`).get(); const actorRole = membership.get("role"); if (!membership.exists || membership.get("status") !== "active" || !inviteRole(actorRole) || !canInvite(actorRole)) return json({ error: "Only workspace administrators can invite members." }, 403); const invitation = db.collection("workspaceInvitations").doc(crypto.randomUUID().replaceAll("-", "")); const now = FieldValue.serverTimestamp(); await invitation.set({ workspaceId, role: body.role, status: "active", createdAt: now, createdBy: account.uid }); return json({ token: invitation.id, role: body.role }, 201); }
+    if (request.method === "POST" && inviteToken) { const invitation = db.doc(`workspaceInvitations/${inviteToken}`); const result = await db.runTransaction(async (transaction) => { const snapshot = await transaction.get(invitation); if (!snapshot.exists || snapshot.get("status") !== "active") return null; const workspaceId = snapshot.get("workspaceId"), role = snapshot.get("role"); if (typeof workspaceId !== "string" || !inviteRole(role)) return null; const workspace = db.doc(`workspaces/${workspaceId}`), membership = db.doc(`workspaceMemberships/${workspaceId}_${account.uid}`); const [workspaceSnapshot] = await Promise.all([transaction.get(workspace), transaction.get(membership)]); if (!workspaceSnapshot.exists || workspaceSnapshot.get("status") !== "active") return null; const now = FieldValue.serverTimestamp(); transaction.set(membership, { accountUid: account.uid, workspaceId, role, status: "active", createdAt: now }, { merge: true }); transaction.update(invitation, { status: "used", usedAt: now, usedBy: account.uid }); return workspaceId; }); return result ? json({ workspaceId: result }) : json({ error: "This invitation has expired or was already used." }, 410); }
+    return json({ error: "Method not allowed." }, 405);
+  } catch (error) { console.error("Invitation request failed.", error); return json({ error: "Invitation access is unavailable." }, 503); }
+}

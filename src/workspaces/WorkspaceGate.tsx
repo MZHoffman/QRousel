@@ -9,6 +9,7 @@ import {
   requestWorkspaceCreation,
   requestWorkspaces,
 } from "./workspace-client";
+import { redeemInvitation } from "./invitation-client";
 import WorkspaceShell from "./WorkspaceShell";
 
 type WorkspaceGateProps = {
@@ -87,7 +88,8 @@ export default function WorkspaceGate({ user, onSignOut }: WorkspaceGateProps) {
 
   useEffect(() => {
     let current = true;
-    void requestWorkspaces(user).then(
+    const inviteToken = new URLSearchParams(window.location.search).get("invite");
+    void (inviteToken ? redeemInvitation(user, inviteToken).then(() => { window.history.replaceState({}, "", "/app"); }) : Promise.resolve()).then(() => requestWorkspaces(user)).then(
       (workspaces) => {
         if (!current) return;
         const loaded = loadedWorkspaceState(workspaces);
