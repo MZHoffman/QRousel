@@ -13,6 +13,7 @@ type Dependencies = {
   authorizeWorkspace: (account: Account, workspaceId: string) => Promise<Access | null>;
   listQrCodes: (account: Account, workspaceId: string) => Promise<QrCodeSummary[]>;
   createQrCode: (account: Account, workspaceId: string, input: Input) => Promise<CreateResult>;
+  updateQrCode: (account: Account, workspaceId: string, qrCodeId: string, input: Input & { expectedRevision: number }) => Promise<{ kind: "updated"; qrCode: QrCodeSummary } | { kind: "conflict"; qrCode: QrCodeSummary } | { kind: "missing" }>;
 };
 type Input = { name: string; kind: QrCodeKind; value: string; color: string; version: number };
 const headers = { "content-type": "application/json; charset=utf-8" };
@@ -22,13 +23,15 @@ function token(request: Request): string | null {
   const value = request.headers.get("authorization");
   return value?.startsWith("Bearer ") ? value.slice(7).trim() || null : null;
 }
-function route(request: Request): string | null {
+function route(request: Request): { workspaceId: string; qrCodeId: string | null } | null {
   const url = new URL(request.url);
   const query = url.searchParams.get("workspaceId")?.trim();
-  if (query) return query;
-  const match = url.pathname.match(/^\/api\/workspaces\/([^/]+)\/qr-codes$/);
-  try { return match?.[1] ? decodeURIComponent(match[1]).trim() || null : null; } catch { return null; }
+  const queryCode = url.searchParams.get("qrCodeId")?.trim() || null;
+  if (query) return { workspaceId: query, qrCodeId: queryCode };
+  const match = url.pathname.match(/^\/api\/workspaces\/([^/]+)\/qr-codes(?:\/([^/]+))?$/);
+  try { const workspaceId = match?.[1] ? decodeURIComponent(match[1]).trim() : ""; const qrCodeId = match?.[2] ? decodeURIComponent(match[2]).trim() : null; return workspaceId ? { workspaceId, qrCodeId } : null; } catch { return null; }
 }
+function updateInput(body: unknown): body is Input & { expectedRevision: number } { return input(body) && "expectedRevision" in body && Number.isSafeInteger(body.expectedRevision) && Number(body.expectedRevision) > 0; }
 function input(body: unknown): body is Input {
   return typeof body === "object" && body !== null &&
     "name" in body && typeof body.name === "string" &&
@@ -43,19 +46,17 @@ export function createQrCodeHandler(deps: Dependencies) {
     if (!idToken) return json({ error: "Authentication required." }, 401);
     const account = await deps.authenticate(idToken);
     if (!account) return json({ error: "Authentication required." }, 401);
-    const workspaceId = route(request);
-    if (!workspaceId) return json({ error: "A workspace is required." }, 400);
+    const currentRoute = route(request);
+    if (!currentRoute) return json({ error: "A workspace is required." }, 400);
+    const { workspaceId, qrCodeId } = currentRoute;
     const access = await deps.authorizeWorkspace(account, workspaceId);
     if (!access) return json({ error: "Workspace access denied." }, 403);
-    if (request.method === "GET") return json({ qrCodes: await deps.listQrCodes(account, workspaceId) });
-    if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+    if (request.method === "GET" && qrCodeId === null) return json({ qrCodes: await deps.listQrCodes(account, workspaceId) });
     if (access.role === "viewer") return json({ error: "Editing access required." }, 403);
     const body: unknown = await request.json().catch(() => null);
-    if (!input(body)) return json({ error: "Valid QR code settings are required." }, 400);
-    const result = await deps.createQrCode(account, workspaceId, body);
-    return result.kind === "limit"
-      ? json({ status: "limit_reached", limit: result.limit }, 409)
-      : json({ qrCode: result.qrCode }, 201);
+    if (request.method === "POST" && qrCodeId === null) { if (!input(body)) return json({ error: "Valid QR code settings are required." }, 400); const result = await deps.createQrCode(account, workspaceId, body); return result.kind === "limit" ? json({ status: "limit_reached", limit: result.limit }, 409) : json({ qrCode: result.qrCode }, 201); }
+    if (request.method === "PATCH" && qrCodeId !== null) { if (!updateInput(body)) return json({ error: "Valid QR code settings are required." }, 400); const result = await deps.updateQrCode(account, workspaceId, qrCodeId, body); return result.kind === "missing" ? json({ error: "QR code not found." }, 404) : result.kind === "conflict" ? json({ status: "conflict", qrCode: result.qrCode }, 409) : json({ qrCode: result.qrCode }); }
+    return json({ error: "Method not allowed." }, 405);
   };
 }
 function role(value: unknown): value is WorkspaceRole {
@@ -93,6 +94,10 @@ const production: Dependencies = {
       transaction.set(activity, { type: "qr-code.created", actorUid: account.uid, createdAt: now, resourceId: code.id, resourceName: decision.name, resourceType: "qr-code", workspaceId });
       return { kind: "created" as const, qrCode: { id: code.id, name: decision.name, content: decision.content, kind: requested.kind, color: decision.color, version: decision.version, revision: 1 } };
     });
+  },
+  async updateQrCode(account, workspaceId, qrCodeId, requested) {
+    const db = getFirestore(getFirebaseAdminApp()), workspace = db.doc(`workspaces/${workspaceId}`), member = db.doc(`workspaceMemberships/${workspaceId}_${account.uid}`), code = workspace.collection("qrCodes").doc(qrCodeId), activity = workspace.collection("activity").doc();
+    return db.runTransaction(async (transaction) => { const [membership, codeSnapshot] = await Promise.all([transaction.get(member), transaction.get(code)]); const memberRole = membership.get("role"); if (!membership.exists || membership.get("status") !== "active" || !role(memberRole) || memberRole === "viewer") throw new Error("Workspace editing access is unavailable."); const current = summary(codeSnapshot); if (!current) return { kind: "missing" as const }; if (current.revision !== requested.expectedRevision) return { kind: "conflict" as const, qrCode: current }; const decision = decideQrCodeCreation({ qrCodeCount: 0, requestedName: requested.name, kind: requested.kind, value: requested.value, color: requested.color, version: requested.version }); if (decision.kind === "limit") throw new Error("QR code limit is unavailable."); const revision = current.revision + 1, now = FieldValue.serverTimestamp(); transaction.update(code, { name: decision.name, content: decision.content, kind: requested.kind, color: decision.color, version: decision.version, revision, updatedAt: now, updatedBy: account.uid }); transaction.update(workspace, { updatedAt: now }); transaction.set(activity, { type: "qr-code.updated", actorUid: account.uid, createdAt: now, resourceId: code.id, resourceName: decision.name, resourceType: "qr-code", workspaceId }); return { kind: "updated" as const, qrCode: { id: code.id, name: decision.name, content: decision.content, kind: requested.kind, color: decision.color, version: decision.version, revision } }; });
   },
 };
 const handler = createQrCodeHandler(production);
