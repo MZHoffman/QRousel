@@ -4,7 +4,7 @@ import { getFirebaseAdminApp } from "./firebase-admin.ts";
 
 function isGoogleIdentity(token: DecodedIdToken): boolean {
   return (
-    token.firebase.sign_in_provider === "google.com" &&
+    (token.firebase.sign_in_provider === "google.com" || token.firebase.sign_in_provider === "emailLink") &&
     token.email_verified === true &&
     typeof token.email === "string"
   );
