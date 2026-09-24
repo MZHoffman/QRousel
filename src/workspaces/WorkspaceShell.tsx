@@ -456,6 +456,7 @@ export default function WorkspaceShell({
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(() =>
     resolveWorkspaceDeckId(window.location.pathname, workspace.id),
   );
+  const [, setRouteRevision] = useState(0);
   const deckLibrary = useDeckLibrary(user, workspace.id);
   const slideLibrary = useSlideLibrary(user, workspace.id);
   const qrCodeLibrary = useQrCodeLibrary(user, workspace.id);
@@ -467,6 +468,7 @@ export default function WorkspaceShell({
       setSelectedDeckId(
         resolveWorkspaceDeckId(window.location.pathname, workspace.id),
       );
+      setRouteRevision((revision) => revision + 1);
     }
     window.addEventListener("popstate", handleHistoryChange);
     return () => window.removeEventListener("popstate", handleHistoryChange);
@@ -486,6 +488,7 @@ export default function WorkspaceShell({
     window.history.pushState({}, "", path);
     setSection(nextSection);
     setSelectedDeckId(null);
+    setRouteRevision((revision) => revision + 1);
   }
 
   function openDeck(deckId: string) {
