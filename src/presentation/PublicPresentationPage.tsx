@@ -13,8 +13,7 @@ export default function PublicPresentationPage({ deckId }: { deckId: string }) {
   const load = useCallback(async (candidatePasscode = "") => {
     setState({ kind: "loading" });
     try {
-      const query = candidatePasscode ? `?passcode=${encodeURIComponent(candidatePasscode)}` : "";
-      const response = await fetch(`/api/public/decks/${encodeURIComponent(deckId)}${query}`);
+      const response = await fetch(`/api/public/decks/${encodeURIComponent(deckId)}`, { headers: candidatePasscode ? { "x-presentation-passcode": candidatePasscode } : {} });
       const body: unknown = await response.json().catch(() => null);
       if (response.ok && body && typeof body === "object" && "deck" in body && "slides" in body && Array.isArray(body.slides)) { setIndex(0); setStartedAt(Date.now()); setRemaining(1); setState({ kind: "ready", data: body as Presentation }); return; }
       if (response.status === 401 && body && typeof body === "object" && "passcodeRequired" in body) { setState({ kind: "passcode", message: "Enter the passcode provided by the presenter." }); return; }

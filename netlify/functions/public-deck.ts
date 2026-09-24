@@ -22,7 +22,7 @@ export default async function publicDeck(request: Request) {
     const matches = await db.collectionGroup("decks").where("__name__", "==", deckId).limit(1).get();
     const deck = matches.docs[0];
     if (!deck || deck.get("status") !== "active" || deck.get("publicationStatus") !== "published") return json({ error: "Presentation not found." }, 404);
-    if (!matchesPasscode(url.searchParams.get("passcode"), deck.get("presentationPasscodeHash"))) return json({ error: "This presentation needs its passcode.", passcodeRequired: true }, 401);
+    if (!matchesPasscode(request.headers.get("x-presentation-passcode"), deck.get("presentationPasscodeHash"))) return json({ error: "This presentation needs its passcode.", passcodeRequired: true }, 401);
     const workspace = deck.ref.parent.parent;
     if (!workspace) return json({ error: "Presentation not found." }, 404);
     const slides = await deck.ref.collection("slides").orderBy("position").get();
