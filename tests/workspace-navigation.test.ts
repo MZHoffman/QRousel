@@ -61,4 +61,11 @@ test("preserves a valid deep link only for the selected workspace", () => {
     ),
     "/app/workspaces/workspace-1",
   );
+  assert.equal(
+    workspaceLandingPath(
+      "workspace-1",
+      "/app/workspaces/workspace-1/qr-codes/new",
+    ),
+    "/app/workspaces/workspace-1/qr-codes/new",
+  );
 });
