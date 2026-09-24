@@ -1219,6 +1219,13 @@ button {
   background: rgba(30, 107, 75, 0.08);
 }
 
+.icon-library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(142px, 1fr)); gap: 14px; }
+.icon-library-card, .icon-library-add { min-height: 172px; display: grid; justify-items: center; align-content: center; gap: 10px; padding: 15px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,253,248,.92); }
+.icon-library-art { display: grid; width: 82px; height: 82px; place-items: center; background-image: linear-gradient(45deg, #edf0eb 25%, transparent 25%), linear-gradient(-45deg, #edf0eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #edf0eb 75%), linear-gradient(-45deg, transparent 75%, #edf0eb 75%); background-position: 0 0, 0 9px, 9px -9px, -9px 0; background-size: 18px 18px; border-radius: 14px; }
+.icon-library-art img { width: 64px; height: 64px; object-fit: contain; }
+.icon-library-card h2 { max-width: 100%; margin: 0; overflow: hidden; font-family: inherit; font-size: 12px; font-weight: 850; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }.icon-library-card .workspace-text-button { min-height: 28px; margin: 0; padding: 0 8px; font-size: 9px; }
+.icon-library-add { border: 2px dashed rgba(30,107,75,.34); background: rgba(217,245,119,.12); color: var(--ink); font: inherit; transition: .16s ease; }.icon-library-add:hover { border-color: var(--green); background: rgba(217,245,119,.28); transform: translateY(-1px); }.icon-library-add span { display: grid; width: 52px; height: 52px; place-items: center; border-radius: 50%; background: var(--green); color: white; font-size: 34px; font-weight: 300; line-height: 1; }.icon-library-add strong { font-size: 12px; }
+
 .deck-dialog form select {
   min-height: 48px;
   padding: 0 14px;
