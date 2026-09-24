@@ -108,6 +108,7 @@ function isWorkspaceRole(value: unknown): value is WorkspaceRole {
 }
 
 function actorNameFromSnapshot(snapshot: DocumentSnapshot): string {
+  if (snapshot.id === "system") return "QRousel automatic cleanup";
   const displayName = snapshot.get("displayName");
   if (typeof displayName === "string" && displayName.trim().length > 0) {
     return displayName.trim();
