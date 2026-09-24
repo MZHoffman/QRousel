@@ -18,6 +18,11 @@ export function describeWorkspaceActivity(
         title: "Workspace created",
         detail: `${entry.actorName} created this workspace.`,
       };
+    case "workspace.archived":
+      return {
+        title: "Workspace archived",
+        detail: `${entry.actorName} archived this workspace after leaving QRousel.`,
+      };
     case "deck.created":
       return {
         title: "Deck created",

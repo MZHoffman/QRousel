@@ -9,6 +9,11 @@ from = "/api/accounts/admit"
   status = 200
 
 [[redirects]]
+  from = "/api/accounts"
+  to = "/.netlify/functions/delete-account"
+  status = 200
+
+[[redirects]]
 from = "/r/:qrCodeId"
   to = "/.netlify/functions/scan-redirect?qrCodeId=:qrCodeId"
   status = 200
