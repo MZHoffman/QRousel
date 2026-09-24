@@ -10,6 +10,8 @@ import {
   addDeckSlide,
   requestDeckSlides,
   updateDeckSlideTiming,
+  reorderDeckSlides,
+  removeDeckSlide,
 } from "./deck-client";
 import { requestSlides } from "../slides/slide-client";
 import type { SlideSummary } from "../../lib/slides/api-response";
@@ -55,6 +57,7 @@ export default function DeckEditorPage({
   const [selectedSlideId, setSelectedSlideId] = useState("");
   const [slideError, setSlideError] = useState("");
   const [isUpdatingSlides, setIsUpdatingSlides] = useState(false);
+  const [draggedSlideId, setDraggedSlideId] = useState<string | null>(null);
   const canEdit = role !== "viewer";
 
   useEffect(() => {
@@ -91,7 +94,7 @@ export default function DeckEditorPage({
   async function addSelectedSlide() {
     if (!selectedSlideId || isUpdatingSlides) return;
     setIsUpdatingSlides(true); setSlideError("");
-    try { const assigned = await addDeckSlide(user, workspaceId, deckId, selectedSlideId); setDeckSlides((items) => [...items, assigned]); setSelectedSlideId(""); }
+    try { const assigned = await addDeckSlide(user, workspaceId, deckId, selectedSlideId); setDeckSlides((items) => [...items, assigned]); if (state.kind === "ready") applyDeck({ ...state.deck, slideCount: state.deck.slideCount + 1, version: state.deck.version + 1 }); setSelectedSlideId(""); }
     catch (error) { setSlideError(error instanceof Error ? error.message : "QRousel could not add this slide."); }
     finally { setIsUpdatingSlides(false); }
   }
@@ -102,6 +105,27 @@ export default function DeckEditorPage({
     setIsUpdatingSlides(true); setSlideError("");
     try { await updateDeckSlideTiming(user, workspaceId, deckId, assignment.id, duration); setDeckSlides((items) => items.map((item) => item.id === assignment.id ? { ...item, displayDurationSeconds: duration } : item)); }
     catch (error) { setSlideError(error instanceof Error ? error.message : "QRousel could not save this timing."); }
+    finally { setIsUpdatingSlides(false); }
+  }
+
+  async function moveSlide(draggedId: string, targetId: string) {
+    if (draggedId === targetId || isUpdatingSlides) return;
+    const from = deckSlides.findIndex((slide) => slide.id === draggedId), to = deckSlides.findIndex((slide) => slide.id === targetId);
+    if (from < 0 || to < 0) return;
+    const reordered = [...deckSlides];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    setIsUpdatingSlides(true); setSlideError("");
+    try { await reorderDeckSlides(user, workspaceId, deckId, reordered.map((slide) => slide.id)); setDeckSlides(reordered.map((slide, position) => ({ ...slide, position }))); if (state.kind === "ready") applyDeck({ ...state.deck, version: state.deck.version + 1 }); }
+    catch (error) { setSlideError(error instanceof Error ? error.message : "QRousel could not reorder this deck."); }
+    finally { setIsUpdatingSlides(false); setDraggedSlideId(null); }
+  }
+
+  async function removeSlide(assignment: DeckSlide) {
+    if (isUpdatingSlides || !window.confirm(`Remove “${assignment.title}” from this deck? The reusable slide stays in your library.`)) return;
+    setIsUpdatingSlides(true); setSlideError("");
+    try { await removeDeckSlide(user, workspaceId, deckId, assignment.id); setDeckSlides((slides) => slides.filter((slide) => slide.id !== assignment.id).map((slide, position) => ({ ...slide, position }))); if (state.kind === "ready") applyDeck({ ...state.deck, slideCount: state.deck.slideCount - 1, version: state.deck.version + 1 }); }
+    catch (error) { setSlideError(error instanceof Error ? error.message : "QRousel could not remove this slide."); }
     finally { setIsUpdatingSlides(false); }
   }
 
@@ -306,7 +330,7 @@ export default function DeckEditorPage({
             <p className="workspace-kicker">Deck content</p>
             <h2>Slides</h2>
           </div>
-          {deckSlides.length === 0 ? <div className="deck-editor-empty"><span aria-hidden="true">0</span><h3>No slides in this deck</h3><p>Add reusable slides to start building the presentation.</p></div> : <div className="deck-slide-grid">{deckSlides.map((slide) => <article className="deck-slide-tile" key={slide.id}><span className="deck-status">slide {slide.position + 1}</span><h3>{slide.title}</h3><p>{slide.description || "No description"}</p><small>{slide.qrCodeName ? `QR: ${slide.qrCodeName}` : "No QR code selected"}</small><label>Timing override<input type="number" min="1" value={slide.displayDurationSeconds ?? ""} placeholder={`${state.deck.defaultDisplayDurationSeconds}s default`} onChange={(event) => void saveTiming(slide, event.target.value)} disabled={!canEdit || isUpdatingSlides} /></label></article>)}</div>}
+          {deckSlides.length === 0 ? <div className="deck-editor-empty"><span aria-hidden="true">0</span><h3>No slides in this deck</h3><p>Add reusable slides to start building the presentation.</p></div> : <div className="deck-slide-grid">{deckSlides.map((slide) => <article className="deck-slide-tile" key={slide.id} draggable={canEdit && !isUpdatingSlides} onDragStart={() => setDraggedSlideId(slide.id)} onDragOver={(event) => { if (canEdit) event.preventDefault(); }} onDrop={() => { if (draggedSlideId) void moveSlide(draggedSlideId, slide.id); }}><span className="deck-status">slide {slide.position + 1}</span><h3>{slide.title}</h3><p>{slide.description || "No description"}</p><small>{slide.qrCodeName ? `QR: ${slide.qrCodeName}` : "No QR code selected"}</small><label>Timing override<input type="number" min="1" value={slide.displayDurationSeconds ?? ""} placeholder={`${state.deck.defaultDisplayDurationSeconds}s default`} onChange={(event) => void saveTiming(slide, event.target.value)} disabled={!canEdit || isUpdatingSlides} /></label>{canEdit && <div className="deck-slide-actions"><button type="button" className="workspace-text-button" disabled={isUpdatingSlides} onClick={() => void removeSlide(slide)}>Remove</button><small>Drag to reorder</small></div>}</article>)}</div>}
           {canEdit && <div className="deck-slide-picker"><div><strong>Add a reusable slide</strong><span>Choose one already in this workspace, or create a new one.</span></div><select value={selectedSlideId} onChange={(event) => setSelectedSlideId(event.target.value)}><option value="">Choose a slide</option>{availableSlides.map((slide) => <option key={slide.id} value={slide.id}>{slide.title}</option>)}</select><button type="button" disabled={!selectedSlideId || isUpdatingSlides} onClick={() => void addSelectedSlide()}>Add slide</button><button className="workspace-text-button" type="button" onClick={onOpenSlideLibrary}>Open slides library</button></div>}
           {slideError && <p className="auth-error">{slideError}</p>}
         </section>
