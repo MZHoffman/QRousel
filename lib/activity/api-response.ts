@@ -7,6 +7,13 @@ export const WORKSPACE_ACTIVITY_TYPES = [
   "slide.updated",
   "qr-code.created",
   "icon.created",
+  "resource.archived",
+  "resource.restored",
+  "resource.deleted",
+  "member.role-updated",
+  "member.removed",
+  "invitation.created",
+  "invitation.accepted",
 ] as const;
 
 export type WorkspaceActivityType =

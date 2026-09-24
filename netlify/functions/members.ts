@@ -30,10 +30,10 @@ export default async function members(request: Request) {
       const target = await transaction.get(targetMembership); const targetRole = target.get("role");
       if (!target.exists || target.get("status") !== "active" || !role(targetRole) || !canManage(actorRole, targetRole)) return { kind: "denied" as const };
       const now = FieldValue.serverTimestamp(); const activity = workspace.collection("activity").doc();
-      if (request.method === "DELETE") { transaction.update(targetMembership, { status: "revoked", revokedAt: now, revokedBy: account.uid, updatedAt: now }); transaction.set(activity, { type: "workspace.updated", actorUid: account.uid, createdAt: now, resourceId: memberUid, resourceName: "Workspace member", resourceType: "workspace", changedFields: ["member access removed"], workspaceId }); return { kind: "removed" as const }; }
+      if (request.method === "DELETE") { transaction.update(targetMembership, { status: "revoked", revokedAt: now, revokedBy: account.uid, updatedAt: now }); transaction.set(activity, { type: "member.removed", actorUid: account.uid, createdAt: now, resourceId: memberUid, resourceName: "Workspace member", resourceType: "workspace", workspaceId }); return { kind: "removed" as const }; }
       const body: unknown = await request.json().catch(() => null); const nextRole = body && typeof body === "object" && "role" in body ? body.role : null;
       if (!role(nextRole) || nextRole === "founder" || rank[nextRole] >= rank[actorRole]) return { kind: "invalid" as const };
-      transaction.update(targetMembership, { role: nextRole, updatedAt: now, updatedBy: account.uid }); transaction.set(activity, { type: "workspace.updated", actorUid: account.uid, createdAt: now, resourceId: memberUid, resourceName: "Workspace member", resourceType: "workspace", changedFields: ["member role"], workspaceId }); return { kind: "updated" as const, role: nextRole };
+      transaction.update(targetMembership, { role: nextRole, updatedAt: now, updatedBy: account.uid }); transaction.set(activity, { type: "member.role-updated", actorUid: account.uid, createdAt: now, resourceId: memberUid, resourceName: "Workspace member", resourceType: "workspace", changedFields: ["role"], workspaceId }); return { kind: "updated" as const, role: nextRole };
     });
     if (result.kind === "denied") return json({ error: "You cannot manage this member." }, 403);
     if (result.kind === "invalid") return json({ error: "Choose a role below your own access level." }, 400);

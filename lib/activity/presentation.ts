@@ -50,5 +50,19 @@ export function describeWorkspaceActivity(
       };
     case "icon.created":
       return { title: "Icon created", detail: `${entry.actorName} created ${namedResource(entry)}.` };
+    case "resource.archived":
+      return { title: "Resource archived", detail: `${entry.actorName} moved ${namedResource(entry)} to Trash.` };
+    case "resource.restored":
+      return { title: "Resource restored", detail: `${entry.actorName} restored ${namedResource(entry)} from Trash.` };
+    case "resource.deleted":
+      return { title: "Resource permanently deleted", detail: `${entry.actorName} permanently deleted ${namedResource(entry)}.` };
+    case "member.role-updated":
+      return { title: "Member role changed", detail: `${entry.actorName} changed access for ${namedResource(entry)}.` };
+    case "member.removed":
+      return { title: "Member removed", detail: `${entry.actorName} removed ${namedResource(entry)} from this workspace.` };
+    case "invitation.created":
+      return { title: "Invitation created", detail: `${entry.actorName} created an invitation for ${namedResource(entry)}.` };
+    case "invitation.accepted":
+      return { title: "Invitation accepted", detail: `${entry.actorName} joined this workspace.` };
   }
 }
