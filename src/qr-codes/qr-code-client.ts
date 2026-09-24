@@ -19,14 +19,14 @@ export async function requestQrCodes(user: AuthenticatedUser, workspaceId: strin
   if (response.ok && isQrCodeListResponse(body)) return body.qrCodes;
   throw new Error("QRousel could not load your QR codes.");
 }
-export async function createQrCode(user: AuthenticatedUser, workspaceId: string, input: { name: string; kind: QrCodeKind; value: string; color: string; version: number; iconId: string | null }) {
+export async function createQrCode(user: AuthenticatedUser, workspaceId: string, input: { name: string; kind: QrCodeKind; value: string; color: string; version: number; logoScale: number; iconId: string | null }) {
   const response = await fetch(endpoint(workspaceId), { method: "POST", headers: { ...(await headers(user)), "content-type": "application/json" }, body: JSON.stringify(input) });
   const body: unknown = await response.json().catch(() => null);
   if (response.ok && isQrCodeResponse(body)) return { kind: "created" as const, qrCode: body.qrCode };
   if (response.status === 409 && isQrCodeLimitResponse(body)) return { kind: "limit" as const, limit: body.limit };
   throw new Error("QRousel could not create this QR code.");
 }
-export async function updateQrCode(user: AuthenticatedUser, workspaceId: string, qrCodeId: string, input: { name: string; kind: QrCodeKind; value: string; color: string; version: number; iconId: string | null; expectedRevision: number }): Promise<{ kind: "updated"; qrCode: QrCodeSummary } | { kind: "conflict"; qrCode: QrCodeSummary }> {
+export async function updateQrCode(user: AuthenticatedUser, workspaceId: string, qrCodeId: string, input: { name: string; kind: QrCodeKind; value: string; color: string; version: number; logoScale: number; iconId: string | null; expectedRevision: number }): Promise<{ kind: "updated"; qrCode: QrCodeSummary } | { kind: "conflict"; qrCode: QrCodeSummary }> {
   const response = await fetch(`${endpoint(workspaceId)}/${encodeURIComponent(qrCodeId)}`, { method: "PATCH", headers: { ...(await headers(user)), "content-type": "application/json" }, body: JSON.stringify(input) });
   const body: unknown = await response.json().catch(() => null);
   if (response.ok && isQrCodeResponse(body)) return { kind: "updated", qrCode: body.qrCode };

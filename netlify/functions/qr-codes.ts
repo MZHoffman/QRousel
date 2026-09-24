@@ -15,7 +15,7 @@ type Dependencies = {
   createQrCode: (account: Account, workspaceId: string, input: Input) => Promise<CreateResult>;
   updateQrCode: (account: Account, workspaceId: string, qrCodeId: string, input: Input & { expectedRevision: number }) => Promise<{ kind: "updated"; qrCode: QrCodeSummary } | { kind: "conflict"; qrCode: QrCodeSummary } | { kind: "missing" }>;
 };
-type Input = { name: string; kind: QrCodeKind; value: string; color: string; version: number; iconId?: string | null };
+type Input = { name: string; kind: QrCodeKind; value: string; color: string; version: number; logoScale?: number; iconId?: string | null };
 const headers = { "content-type": "application/json; charset=utf-8" };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
 
@@ -39,6 +39,7 @@ function input(body: unknown): body is Input {
     "value" in body && typeof body.value === "string" &&
     "color" in body && typeof body.color === "string" &&
     "version" in body && Number.isSafeInteger(body.version) &&
+    (!("logoScale" in body) || (typeof body.logoScale === "number" && body.logoScale >= 0.1 && body.logoScale <= 0.5)) &&
     (!("iconId" in body) || body.iconId === null || typeof body.iconId === "string");
 }
 export function createQrCodeHandler(deps: Dependencies) {
@@ -64,10 +65,10 @@ function role(value: unknown): value is WorkspaceRole {
   return typeof value === "string" && WORKSPACE_ROLES.includes(value as WorkspaceRole);
 }
 function summary(snapshot: DocumentSnapshot): QrCodeSummary | null {
-  const name = snapshot.get("name"), content = snapshot.get("content"), color = snapshot.get("color"), version = snapshot.get("version"), revision = snapshot.get("revision") ?? 1, storedKind = snapshot.get("kind"), iconId = snapshot.get("iconId") ?? null, iconName = snapshot.get("iconName") ?? null;
+  const name = snapshot.get("name"), content = snapshot.get("content"), color = snapshot.get("color"), version = snapshot.get("version"), revision = snapshot.get("revision") ?? 1, storedKind = snapshot.get("kind"), iconId = snapshot.get("iconId") ?? null, iconName = snapshot.get("iconName") ?? null, logoScale = snapshot.get("logoScale");
   const kind: QrCodeKind = QR_CODE_KINDS.includes(storedKind as QrCodeKind) ? storedKind as QrCodeKind : typeof content === "string" && content.startsWith("mailto:") ? "email" : typeof content === "string" && content.startsWith("tel:") ? "phone" : typeof content === "string" && content.startsWith("WIFI:") ? "wifi" : typeof content === "string" && /^https?:\/\//i.test(content) ? "url" : "text";
   return snapshot.exists && snapshot.get("status") === "active" && typeof name === "string" && typeof content === "string" && typeof color === "string" && Number.isSafeInteger(version) && Number.isSafeInteger(revision)
-    ? { id: snapshot.id, name, content, kind, iconId, iconName, color, version, revision, scanCount: Number.isSafeInteger(snapshot.get("scanCount")) ? snapshot.get("scanCount") : 0 } : null;
+    ? { id: snapshot.id, name, content, kind, iconId, iconName, color, version, logoScale: typeof logoScale === "number" && logoScale >= 0.1 && logoScale <= 0.5 ? logoScale : 0.25, revision, scanCount: Number.isSafeInteger(snapshot.get("scanCount")) ? snapshot.get("scanCount") : 0 } : null;
 }
 const production: Dependencies = {
   authenticate: authenticateActiveAccount,
@@ -93,14 +94,15 @@ const production: Dependencies = {
       if (icon && (!icon.exists || icon.get("status") !== "active" || typeof icon.get("name") !== "string")) throw new Error("The selected icon is unavailable.");
       const now = FieldValue.serverTimestamp();
       transaction.update(workspace, { qrCodeCount: decision.nextQrCodeCount, updatedAt: now });
-      transaction.set(code, { name: decision.name, content: decision.content, kind: requested.kind, iconId: icon?.id ?? null, iconName: icon?.get("name") ?? null, color: decision.color, version: decision.version, revision: 1, status: "active", workspaceId, createdAt: now, createdBy: account.uid, updatedAt: now });
+      const logoScale = requested.logoScale ?? 0.25;
+      transaction.set(code, { name: decision.name, content: decision.content, kind: requested.kind, iconId: icon?.id ?? null, iconName: icon?.get("name") ?? null, color: decision.color, version: decision.version, logoScale, revision: 1, status: "active", workspaceId, createdAt: now, createdBy: account.uid, updatedAt: now });
       transaction.set(activity, { type: "qr-code.created", actorUid: account.uid, createdAt: now, resourceId: code.id, resourceName: decision.name, resourceType: "qr-code", workspaceId });
-      return { kind: "created" as const, qrCode: { id: code.id, name: decision.name, content: decision.content, kind: requested.kind, iconId: icon?.id ?? null, iconName: icon?.get("name") ?? null, color: decision.color, version: decision.version, revision: 1 } };
+      return { kind: "created" as const, qrCode: { id: code.id, name: decision.name, content: decision.content, kind: requested.kind, iconId: icon?.id ?? null, iconName: icon?.get("name") ?? null, color: decision.color, version: decision.version, logoScale, revision: 1 } };
     });
   },
   async updateQrCode(account, workspaceId, qrCodeId, requested) {
     const db = getFirestore(getFirebaseAdminApp()), workspace = db.doc(`workspaces/${workspaceId}`), member = db.doc(`workspaceMemberships/${workspaceId}_${account.uid}`), code = workspace.collection("qrCodes").doc(qrCodeId), activity = workspace.collection("activity").doc();
-    return db.runTransaction(async (transaction) => { const [membership, codeSnapshot] = await Promise.all([transaction.get(member), transaction.get(code)]); const memberRole = membership.get("role"); if (!membership.exists || membership.get("status") !== "active" || !role(memberRole) || memberRole === "viewer") throw new Error("Workspace editing access is unavailable."); const current = summary(codeSnapshot); if (!current) return { kind: "missing" as const }; if (current.revision !== requested.expectedRevision) return { kind: "conflict" as const, qrCode: current }; const icon = requested.iconId ? await transaction.get(workspace.collection("icons").doc(requested.iconId)) : null; if (icon && (!icon.exists || icon.get("status") !== "active" || typeof icon.get("name") !== "string")) throw new Error("The selected icon is unavailable."); const decision = decideQrCodeCreation({ qrCodeCount: 0, requestedName: requested.name, kind: requested.kind, value: requested.value, color: requested.color, version: requested.version }); if (decision.kind === "limit") throw new Error("QR code limit is unavailable."); const revision = current.revision + 1, now = FieldValue.serverTimestamp(); transaction.update(code, { name: decision.name, content: decision.content, kind: requested.kind, iconId: icon?.id ?? null, iconName: icon?.get("name") ?? null, color: decision.color, version: decision.version, revision, updatedAt: now, updatedBy: account.uid }); transaction.update(workspace, { updatedAt: now }); transaction.set(activity, { type: "qr-code.updated", actorUid: account.uid, createdAt: now, resourceId: code.id, resourceName: decision.name, resourceType: "qr-code", workspaceId }); return { kind: "updated" as const, qrCode: { id: code.id, name: decision.name, content: decision.content, kind: requested.kind, iconId: icon?.id ?? null, iconName: icon?.get("name") ?? null, color: decision.color, version: decision.version, revision } }; });
+    return db.runTransaction(async (transaction) => { const [membership, codeSnapshot] = await Promise.all([transaction.get(member), transaction.get(code)]); const memberRole = membership.get("role"); if (!membership.exists || membership.get("status") !== "active" || !role(memberRole) || memberRole === "viewer") throw new Error("Workspace editing access is unavailable."); const current = summary(codeSnapshot); if (!current) return { kind: "missing" as const }; if (current.revision !== requested.expectedRevision) return { kind: "conflict" as const, qrCode: current }; const icon = requested.iconId ? await transaction.get(workspace.collection("icons").doc(requested.iconId)) : null; if (icon && (!icon.exists || icon.get("status") !== "active" || typeof icon.get("name") !== "string")) throw new Error("The selected icon is unavailable."); const decision = decideQrCodeCreation({ qrCodeCount: 0, requestedName: requested.name, kind: requested.kind, value: requested.value, color: requested.color, version: requested.version }); if (decision.kind === "limit") throw new Error("QR code limit is unavailable."); const revision = current.revision + 1, now = FieldValue.serverTimestamp(), logoScale = requested.logoScale ?? 0.25; transaction.update(code, { name: decision.name, content: decision.content, kind: requested.kind, iconId: icon?.id ?? null, iconName: icon?.get("name") ?? null, color: decision.color, version: decision.version, logoScale, revision, updatedAt: now, updatedBy: account.uid }); transaction.update(workspace, { updatedAt: now }); transaction.set(activity, { type: "qr-code.updated", actorUid: account.uid, createdAt: now, resourceId: code.id, resourceName: decision.name, resourceType: "qr-code", workspaceId }); return { kind: "updated" as const, qrCode: { id: code.id, name: decision.name, content: decision.content, kind: requested.kind, iconId: icon?.id ?? null, iconName: icon?.get("name") ?? null, color: decision.color, version: decision.version, logoScale, revision } }; });
   },
 };
 const handler = createQrCodeHandler(production);
