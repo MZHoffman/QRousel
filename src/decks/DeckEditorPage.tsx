@@ -45,6 +45,7 @@ export default function DeckEditorPage({
   const [duration, setDuration] = useState("15");
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [conflictDeck, setConflictDeck] = useState<DeckSummary | null>(null);
   const [deckSlides, setDeckSlides] = useState<DeckSlide[]>([]);
@@ -187,6 +188,7 @@ export default function DeckEditorPage({
       setIsDuplicating(false);
     }
   }
+  async function togglePublication() { if (state.kind !== "ready") return; setIsPublishing(true); try { const next = state.deck.publicationStatus === "published" ? "draft" : "published"; await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/decks/${encodeURIComponent(deckId)}/publication`, { method: "POST", headers: { authorization: `Bearer ${await user.getIdToken()}`, "content-type": "application/json" }, body: JSON.stringify({ publicationStatus: next }) }); applyDeck({ ...state.deck, publicationStatus: next, version: state.deck.version + 1 }); } finally { setIsPublishing(false); } }
 
   if (state.kind === "loading") {
     return (
@@ -224,6 +226,10 @@ export default function DeckEditorPage({
           </p>
         </div>
         <div className="deck-editor-heading-actions">
+          {canEdit && (
+            <button type="button" disabled={isPublishing || state.deck.slideCount === 0} onClick={() => void togglePublication()}>{state.deck.publicationStatus === "published" ? "Unpublish" : "Publish deck"}</button>
+          )}
+          {state.deck.publicationStatus === "published" && <a href={`/present/${encodeURIComponent(deckId)}`} target="_blank" rel="noreferrer">Open presentation</a>}
           {canEdit && (
             <button
               type="button"
