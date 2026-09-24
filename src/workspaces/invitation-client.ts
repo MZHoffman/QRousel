@@ -1,0 +1,5 @@
+import type { User } from "firebase/auth";
+import type { WorkspaceRole } from "../../lib/workspaces/api-response";
+async function headers(user: User) { return { authorization: `Bearer ${await user.getIdToken()}` }; }
+export async function createInvitation(user: User, workspaceId: string, role: Exclude<WorkspaceRole, "founder">) { const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/invitations`, { method: "POST", headers: { ...(await headers(user)), "content-type": "application/json" }, body: JSON.stringify({ role }) }); const body: unknown = await response.json().catch(() => null); if (response.ok && typeof body === "object" && body !== null && "token" in body && typeof body.token === "string") return body.token; throw new Error("QRousel could not create an invitation."); }
+export async function redeemInvitation(user: User, inviteToken: string) { const response = await fetch(`/api/invitations/${encodeURIComponent(inviteToken)}/redeem`, { method: "POST", headers: await headers(user) }); if (!response.ok) throw new Error("This invitation has expired or was already used."); }
