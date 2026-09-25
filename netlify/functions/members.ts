@@ -19,7 +19,7 @@ export default async function members(request: Request) {
     const db = getFirestore(getFirebaseAdminApp()), workspace = db.doc(`workspaces/${workspaceId}`), actorMembership = db.doc(`workspaceMemberships/${workspaceId}_${account.uid}`);
     const [workspaceSnapshot, actorSnapshot] = await db.getAll(workspace, actorMembership); const actorRole = actorSnapshot.get("role");
     if (!workspaceSnapshot.exists || workspaceSnapshot.get("status") !== "active" || !actorSnapshot.exists || actorSnapshot.get("status") !== "active" || !role(actorRole)) return json({ error: "Workspace access denied." }, 403);
-    if (request.method === "GET" && !memberUid) {
+    if (request.method === "GET") {
       const memberships = await db.collection("workspaceMemberships").where("workspaceId", "==", workspaceId).where("status", "==", "active").get();
       const accounts = await db.getAll(...memberships.docs.map((member) => db.doc(`accounts/${member.get("accountUid")}`)));
       return json({ members: memberships.docs.flatMap((member, index) => { const memberRole = member.get("role"), accountSnapshot = accounts[index], uid = member.get("accountUid"); return role(memberRole) && typeof uid === "string" ? [{ uid, role: memberRole, displayName: typeof accountSnapshot?.get("displayName") === "string" ? accountSnapshot.get("displayName") : null, email: typeof accountSnapshot?.get("email") === "string" ? accountSnapshot.get("email") : null }] : []; }).sort((a, b) => rank[b.role] - rank[a.role] || a.email?.localeCompare(b.email ?? "") || 0) });
