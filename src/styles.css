@@ -1189,7 +1189,7 @@ button {
   line-height: 1.55;
 }
 
-.slide-card button {
+.slide-card > button {
   min-height: 34px;
   margin-top: auto;
   padding: 0 11px;
@@ -1201,6 +1201,40 @@ button {
   font: inherit;
   font-size: 10px;
   font-weight: 900;
+}
+
+.slide-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.slide-card-actions button {
+  min-height: 34px;
+  margin: 0;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.slide-card-actions .workspace-text-button {
+  color: #a7463c;
+}
+
+.slide-card-actions .workspace-text-button:hover {
+  border-color: rgba(167, 70, 60, 0.45);
+  background: rgba(167, 70, 60, 0.06);
+  color: #8d342b;
 }
 
 .qr-color-dot {
