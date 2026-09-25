@@ -5,6 +5,10 @@ import LandingPage from "./marketing/LandingPage";
 import PublicPresentationPage from "./presentation/PublicPresentationPage";
 import "./styles.css";
 
+if (import.meta.env.VITE_QROUSEL_E2E === "true") {
+  void import("./e2e-test-hook");
+}
+
 const root = document.getElementById("root");
 
 if (root === null) {
