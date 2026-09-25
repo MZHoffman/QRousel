@@ -6,7 +6,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 const eslintConfig = defineConfig([
-  globalIgnores(["dist/**"]),
+  globalIgnores(["dist/**", ".netlify/**", "test-results/**", "playwright-report/**"]),
   {
     files: ["**/*.{js,mjs}"],
     extends: [js.configs.recommended],

@@ -43,10 +43,13 @@ function readServiceAccount(): ServiceAccount {
 }
 
 export function getFirebaseAdminApp(): App {
+  const isEmulator = Boolean(
+    process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_AUTH_EMULATOR_HOST,
+  );
   return (
     getApps()[0] ??
-    initializeApp({
-      credential: cert(readServiceAccount()),
-    })
+    (isEmulator
+      ? initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? "qrousel-e2e" })
+      : initializeApp({ credential: cert(readServiceAccount()) }))
   );
 }

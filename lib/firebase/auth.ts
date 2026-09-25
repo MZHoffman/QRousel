@@ -1,5 +1,6 @@
 import {
   GoogleAuthProvider,
+  connectAuthEmulator,
   getAuth,
   isSignInWithEmailLink,
   sendSignInLinkToEmail,
@@ -13,9 +14,15 @@ import { getFirebaseClientApp } from "./client";
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
+let emulatorConnected = false;
 
 export function getFirebaseClientAuth(): Auth {
-  return getAuth(getFirebaseClientApp());
+  const auth = getAuth(getFirebaseClientApp());
+  if (import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST && !emulatorConnected) {
+    connectAuthEmulator(auth, `http://${import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST}`, { disableWarnings: true });
+    emulatorConnected = true;
+  }
+  return auth;
 }
 
 export async function signInWithGoogle(): Promise<User> {
