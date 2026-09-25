@@ -1,8 +1,51 @@
 import type { User } from "firebase/auth";
 import type { WorkspaceRole } from "../../lib/workspaces/api-response";
-async function headers(user: User) { return { authorization: `Bearer ${await user.getIdToken()}` }; }
-export type InvitationCreation = { token: string; emailDelivery: "sent" | "failed" | "limit" | "not-configured" | "not-requested" };
-export async function createInvitation(user: User, workspaceId: string, role: Exclude<WorkspaceRole, "founder">, email?: string): Promise<InvitationCreation> { const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/invitations`, { method: "POST", headers: { ...(await headers(user)), "content-type": "application/json" }, body: JSON.stringify({ role, email }) }); const body: unknown = await response.json().catch(() => null); if (response.ok && typeof body === "object" && body !== null && "token" in body && typeof body.token === "string" && "emailDelivery" in body && (body.emailDelivery === "sent" || body.emailDelivery === "failed" || body.emailDelivery === "limit" || body.emailDelivery === "not-configured" || body.emailDelivery === "not-requested")) return { token: body.token, emailDelivery: body.emailDelivery }; throw new Error("QRousel could not create an invitation."); }
-export async function redeemInvitation(user: User, inviteToken: string) { const response = await fetch(`/api/invitations/${encodeURIComponent(inviteToken)}/redeem`, { method: "POST", headers: await headers(user) }); if (!response.ok) throw new Error("This invitation has expired or was already used."); }
-export type WorkspaceInvitation = { token: string; role: Exclude<WorkspaceRole, "founder">; status: "active" | "used" };
-export async function requestInvitations(user: User, workspaceId: string): Promise<WorkspaceInvitation[]> { const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/invitations`, { headers: await headers(user) }); const body: unknown = await response.json().catch(() => null); if (response.ok && body && typeof body === "object" && "invitations" in body && Array.isArray(body.invitations)) return body.invitations as WorkspaceInvitation[]; throw new Error("QRousel could not load invitations."); }
+
+async function headers(user: User) {
+  return { authorization: `Bearer ${await user.getIdToken()}` };
+}
+
+function apiError(body: unknown, fallback: string) {
+  return body && typeof body === "object" && "error" in body && typeof body.error === "string"
+    ? body.error
+    : fallback;
+}
+
+export type InvitationCreation = {
+  token: string;
+  emailDelivery: "sent" | "failed" | "limit" | "not-configured" | "not-requested";
+};
+
+export type WorkspaceInvitation = {
+  token: string;
+  role: Exclude<WorkspaceRole, "founder">;
+  status: "active" | "used";
+  email?: string | null;
+};
+
+export async function createInvitation(user: User, workspaceId: string, role: Exclude<WorkspaceRole, "founder">, email?: string): Promise<InvitationCreation> {
+  const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/invitations`, {
+    method: "POST",
+    headers: { ...(await headers(user)), "content-type": "application/json" },
+    body: JSON.stringify({ role, email }),
+  });
+  const body: unknown = await response.json().catch(() => null);
+  if (response.ok && typeof body === "object" && body !== null && "token" in body && typeof body.token === "string" && "emailDelivery" in body && (body.emailDelivery === "sent" || body.emailDelivery === "failed" || body.emailDelivery === "limit" || body.emailDelivery === "not-configured" || body.emailDelivery === "not-requested")) {
+    return { token: body.token, emailDelivery: body.emailDelivery };
+  }
+  throw new Error(apiError(body, "QRousel could not create an invitation."));
+}
+
+export async function redeemInvitation(user: User, inviteToken: string) {
+  const response = await fetch(`/api/invitations/${encodeURIComponent(inviteToken)}/redeem`, { method: "POST", headers: await headers(user) });
+  if (!response.ok) throw new Error("This invitation has expired or was already used.");
+}
+
+export async function requestInvitations(user: User, workspaceId: string): Promise<WorkspaceInvitation[]> {
+  const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/invitations`, { headers: await headers(user) });
+  const body: unknown = await response.json().catch(() => null);
+  if (response.ok && body && typeof body === "object" && "invitations" in body && Array.isArray(body.invitations)) {
+    return body.invitations as WorkspaceInvitation[];
+  }
+  throw new Error(apiError(body, "QRousel could not load invitations."));
+}
