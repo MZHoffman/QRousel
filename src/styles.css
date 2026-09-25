@@ -825,6 +825,21 @@ button {
   text-transform: uppercase;
 }
 
+.members-page { display: grid; gap: 18px; }
+.workspace-member-list { display: grid; gap: 10px; }
+.member-card { grid-template-columns: 42px minmax(0, 1fr) auto; min-height: 76px; }
+.member-card-actions { display: flex !important; align-items: center; justify-content: flex-end; gap: 7px; }
+.member-card-actions select, .invite-panel select, .invite-panel input { min-height: 38px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); font: inherit; font-size: 11px; font-weight: 750; outline: none; }
+.member-card-actions select { min-width: 105px; padding: 0 28px 0 10px; text-transform: capitalize; }
+.member-card-actions select:focus, .invite-panel select:focus, .invite-panel input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(30,107,75,.12); }
+.member-card-actions button { min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; font: inherit; font-size: 10px; font-weight: 850; }.member-card-actions button:hover { border-color: rgba(30,107,75,.45); color: var(--green); }
+.invite-panel { display: grid; gap: 17px; padding: 23px; border: 1px solid var(--line); border-radius: 18px; background: radial-gradient(circle at 98% 5%, rgba(217,245,119,.18), transparent 13rem), rgba(255,253,248,.92); }.invite-panel h2, .invitation-list h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 500; letter-spacing: -.035em; }.invite-panel > div > p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.invite-panel-form { display: grid; grid-template-columns: minmax(0,1fr) 150px auto; align-items: end; gap: 10px; }.invite-panel-form label, .invite-link { display: grid; gap: 6px; }.invite-panel-form label > span, .invite-link > span { color: var(--muted); font-size: 10px; font-weight: 800; }.invite-panel-form em { font-style: normal; font-weight: 500; }.invite-panel input, .invite-panel select { width: 100%; padding: 0 11px; }.invite-panel-form button { min-height: 38px; padding: 0 15px; border: 0; border-radius: 9px; background: #13271f; color: white; cursor: pointer; font: inherit; font-size: 11px; font-weight: 900; }.invite-panel-form button:hover { background: var(--green); }
+.invite-panel-note { margin: -7px 0 0; color: var(--muted); font-size: 10px; }.invite-link { max-width: 680px; }.invite-link input { color: var(--green); font-size: 10px; }.invitation-list { display: grid; gap: 9px; }.invitation-list > article { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 13px 16px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,253,248,.78); }.invitation-list article div { display: grid; gap: 3px; }.invitation-list article strong { font-size: 11px; }.invitation-list article div span { color: var(--muted); font-size: 10px; }.invitation-list article > span { padding: 5px 8px; border-radius: 999px; background: rgba(30,107,75,.09); color: var(--green); font-size: 9px; font-weight: 900; text-transform: uppercase; }
+.trash-loading .auth-spinner { margin-bottom: 4px; }
+
+@media (max-width: 720px) { .member-card { grid-template-columns: 38px minmax(0,1fr); }.member-card-actions { grid-column: 2; justify-content: flex-start; flex-wrap: wrap; }.invite-panel-form { grid-template-columns: 1fr; }.invite-panel-form button { width: 100%; }.invitation-list > article { align-items: flex-start; flex-direction: column; gap: 8px; } }
+
 .workspace-activity-item {
   grid-template-columns: 24px minmax(0, 1fr);
 }

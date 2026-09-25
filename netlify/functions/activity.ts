@@ -1,5 +1,4 @@
 import {
-  FieldPath,
   getFirestore,
   Timestamp,
   type DocumentSnapshot,
@@ -239,7 +238,6 @@ const productionDependencies: ActivityHandlerDependencies = {
     let query = firestore
       .collection(`workspaces/${workspaceId}/activity`)
       .orderBy("createdAt", "desc")
-      .orderBy(FieldPath.documentId())
       .limit(25);
     if (cursor !== null) {
       const parsedCursor = parseActivityCursor(cursor);
@@ -248,7 +246,6 @@ const productionDependencies: ActivityHandlerDependencies = {
       }
       query = query.startAfter(
         Timestamp.fromDate(new Date(parsedCursor.occurredAt)),
-        parsedCursor.id,
       );
     }
     const snapshots = await query.get();

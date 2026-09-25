@@ -105,11 +105,9 @@ export default function ActivityPage({
     <>
       <header className="workspace-page-heading activity-page-heading">
         <div>
-          <p className="workspace-kicker">Immutable history</p>
           <h1>Activity</h1>
           <p>Review who changed workspace resources and when.</p>
         </div>
-        <span>Read-only log</span>
       </header>
 
       {state.kind === "loading" && (
