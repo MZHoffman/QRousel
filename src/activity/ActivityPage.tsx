@@ -23,6 +23,14 @@ const FIELD_LABELS: Record<string, string> = {
   defaultDisplayDurationSeconds: "Default timing",
 };
 
+function ActivityGlyph({ resourceType }: { resourceType: WorkspaceActivityEntry["resourceType"] }) {
+  if (resourceType === "deck") return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="12" rx="2" /><path d="M9 20h6M12 17v3" /></svg>;
+  if (resourceType === "slide") return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="13" rx="2" /><path d="M7.5 9h9M7.5 13h5" /></svg>;
+  if (resourceType === "qr-code") return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="5" height="5" /><rect x="15" y="4" width="5" height="5" /><rect x="4" y="15" width="5" height="5" /><path d="M14 14h2v2h-2zm3 3h3v3h-3zm-3 2h2" /></svg>;
+  if (resourceType === "icon") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 7 7-7 11L5 10l7-7Z" /><path d="m9.5 10.5 2.5 2.5 2.5-2.5" /></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></svg>;
+}
+
 export default function ActivityPage({
   user,
   workspaceId,
@@ -152,7 +160,7 @@ export default function ActivityPage({
               return (
                 <li key={entry.id}>
                   <span className="activity-feed-mark" aria-hidden="true">
-                    {entry.resourceType === "deck" ? "D" : "W"}
+                    <ActivityGlyph resourceType={entry.resourceType} />
                   </span>
                   <div className="activity-feed-copy">
                     <strong>{description.title}</strong>

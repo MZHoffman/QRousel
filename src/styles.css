@@ -935,10 +935,9 @@ button {
   border-radius: 12px;
   background: rgba(30, 107, 75, 0.09);
   color: var(--green);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 16px;
-  font-weight: 700;
 }
+
+.activity-feed-mark svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
 
 .activity-feed-copy {
   min-width: 0;
