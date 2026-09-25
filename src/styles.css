@@ -1237,6 +1237,48 @@ button {
   color: #8d342b;
 }
 
+.slide-library-grid {
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+}
+
+.slide-library-card {
+  position: relative;
+  min-height: 0;
+  gap: 14px;
+  padding: 13px;
+}
+
+.slide-thumbnail {
+  min-height: 156px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px;
+  align-items: center;
+  gap: 15px;
+  padding: 21px;
+  border-radius: 11px;
+  background:
+    radial-gradient(circle at 88% 20%, rgba(217, 245, 119, .28), transparent 6rem),
+    linear-gradient(145deg, #173d2c, #10271e);
+  color: white;
+}
+
+.slide-thumbnail > div { min-width: 0; display: grid; gap: 9px; }
+.slide-thumbnail > div > span { overflow: hidden; font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 500; letter-spacing: -.045em; line-height: .98; text-overflow: ellipsis; }
+.slide-thumbnail > div > small { display: -webkit-box; overflow: hidden; color: rgba(255,255,255,.7); font-size: 9px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.slide-thumbnail-qr { display: grid; width: 58px; height: 58px; place-items: center; border: 5px solid white; border-radius: 4px; background: repeating-linear-gradient(45deg, white 0 4px, #13271f 4px 8px); color: #13271f; font-size: 10px; font-weight: 950; letter-spacing: .04em; }
+
+.slide-thumbnail-actions { position: absolute; z-index: 1; top: 22px; right: 22px; display: flex; gap: 6px; opacity: 0; transform: translateY(-3px); transition: .16s ease; }
+.slide-library-card:hover .slide-thumbnail-actions, .slide-library-card:focus-within .slide-thumbnail-actions { opacity: 1; transform: translateY(0); }
+.slide-thumbnail-actions button { display: grid; width: 32px; height: 32px; place-items: center; padding: 0; border: 1px solid rgba(255,255,255,.25); border-radius: 9px; background: rgba(19,39,31,.86); color: white; cursor: pointer; backdrop-filter: blur(8px); }.slide-thumbnail-actions button:hover { background: white; color: var(--green); }.slide-thumbnail-actions .slide-thumbnail-trash:hover { color: #a7463c; }.slide-thumbnail-actions svg, .slide-use-button svg, .slide-library-add svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+
+.slide-library-card-copy { display: grid; gap: 5px; }.slide-library-card-copy h2 { margin: 0; font-size: 21px; }.slide-library-card-copy p { font-size: 10px; }
+.slide-library-card .slide-use-button { width: 100%; min-height: 37px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: 0; border-color: rgba(30,107,75,.28); background: rgba(30,107,75,.05); color: var(--green); }.slide-library-card .slide-use-button:hover { border-color: var(--green); background: rgba(217,245,119,.24); }
+.slide-deck-picker { display: grid; gap: 9px; padding: 11px; border: 1px solid rgba(30,107,75,.2); border-radius: 10px; background: rgba(30,107,75,.045); }.slide-deck-picker > strong { font-size: 10px; }.slide-deck-picker > p { font-size: 9px; }.slide-deck-picker > div { display: grid; gap: 6px; max-height: 155px; overflow: auto; }.slide-deck-picker button { min-height: 35px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); cursor: pointer; font: inherit; font-size: 10px; font-weight: 800; text-align: left; }.slide-deck-picker button:hover { border-color: var(--green); }.slide-deck-picker button small { color: var(--muted); font-size: 8px; white-space: nowrap; }
+
+.slide-library-add { min-height: 250px; display: grid; place-items: center; align-content: center; gap: 9px; padding: 20px; border: 2px dashed rgba(30,107,75,.36); border-radius: 16px; background: rgba(217,245,119,.1); color: var(--ink); cursor: pointer; font: inherit; transition: .16s ease; }.slide-library-add:hover { border-color: var(--green); background: rgba(217,245,119,.25); transform: translateY(-2px); }.slide-library-add > span { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 50%; background: var(--green); color: white; }.slide-library-add > span svg { width: 22px; height: 22px; }.slide-library-add strong { font-size: 12px; }.slide-library-add small { color: var(--muted); font-size: 9px; }
+
+@media (hover: none) { .slide-thumbnail-actions { opacity: 1; transform: none; } }
+
 .qr-color-dot {
   width: 22px;
   height: 22px;
