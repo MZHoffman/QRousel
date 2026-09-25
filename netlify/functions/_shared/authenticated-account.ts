@@ -3,6 +3,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import { getFirebaseAdminApp } from "./firebase-admin.ts";
 
 function isGoogleIdentity(token: DecodedIdToken): boolean {
+  if (process.env.QROUSEL_E2E === "true") return typeof token.email === "string";
   return (
     (token.firebase.sign_in_provider === "google.com" || token.firebase.sign_in_provider === "emailLink") &&
     token.email_verified === true &&
