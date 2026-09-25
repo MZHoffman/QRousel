@@ -536,6 +536,15 @@ button {
   color: white;
 }
 
+.workspace-account .workspace-text-button {
+  margin-top: 0;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.workspace-account .workspace-text-button:hover {
+  color: #ffb9af;
+}
+
 .workspace-main-column {
   min-width: 0;
 }
