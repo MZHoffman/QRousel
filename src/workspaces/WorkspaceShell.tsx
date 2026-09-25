@@ -260,6 +260,7 @@ function WorkspacePage({
         role={workspace.role}
         user={user}
         workspaceId={workspace.id}
+        onOpenDeck={onOpenDeck}
         onCreatePage={() => {
           window.history.pushState({}, "", workspaceResourceEditorPath(workspace.id, "slides", "new"));
           window.dispatchEvent(new PopStateEvent("popstate"));
