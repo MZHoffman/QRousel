@@ -44,7 +44,6 @@ export default function DeckLibraryPage({
     <>
       <header className="workspace-page-heading deck-library-heading">
         <div>
-          <p className="workspace-kicker">Presentations</p>
           <h1>Decks</h1>
           <p>Build, publish, and present collections of reusable slides.</p>
         </div>
