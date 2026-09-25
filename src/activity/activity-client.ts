@@ -22,5 +22,8 @@ export async function requestWorkspaceActivity(
   );
   const body: unknown = await response.json().catch(() => null);
   if (response.ok && isActivityListResponse(body)) return body;
+  if (body && typeof body === "object" && "error" in body && typeof body.error === "string") {
+    throw new Error(body.error);
+  }
   throw new Error("QRousel could not load workspace activity.");
 }
