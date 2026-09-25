@@ -34,7 +34,7 @@ export default function QrCodeCreatePage({ library, role, icons, onBack }: { lib
 
   return <>
     <button className="qr-editor-back" type="button" onClick={onBack}>
-      <span aria-hidden="true">←</span>
+      <span aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M15.5 10H4.5M9 5.5 4.5 10 9 14.5" /></svg></span>
       Back to QR codes
     </button>
     <header className="deck-editor-heading qr-editor-heading">
