@@ -9,7 +9,21 @@ const DECK_SLIDE_LIMIT = 50;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
 const editing = (role: WorkspaceRole) => role !== "viewer";
 const role = (value: unknown): value is WorkspaceRole => typeof value === "string" && WORKSPACE_ROLES.includes(value as WorkspaceRole);
-function route(request: Request) { const url = new URL(request.url); const workspaceId = url.searchParams.get("workspaceId")?.trim(); const deckId = url.searchParams.get("deckId")?.trim(); const assignmentId = url.searchParams.get("assignmentId")?.trim() || null; return workspaceId && deckId ? { workspaceId, deckId, assignmentId } : null; }
+function route(request: Request) {
+  const url = new URL(request.url);
+  const workspaceId = url.searchParams.get("workspaceId")?.trim();
+  const deckId = url.searchParams.get("deckId")?.trim();
+  const assignmentId = url.searchParams.get("assignmentId")?.trim() || null;
+  if (workspaceId && deckId) return { workspaceId, deckId, assignmentId };
+  const match = url.pathname.match(/^\/api\/workspaces\/([^/]+)\/decks\/([^/]+)\/slides(?:\/([^/]+))?$/);
+  if (!match?.[1] || !match[2]) return null;
+  try {
+    const pathWorkspaceId = decodeURIComponent(match[1]).trim();
+    const pathDeckId = decodeURIComponent(match[2]).trim();
+    const pathAssignmentId = match[3] ? decodeURIComponent(match[3]).trim() : null;
+    return pathWorkspaceId && pathDeckId ? { workspaceId: pathWorkspaceId, deckId: pathDeckId, assignmentId: pathAssignmentId || null } : null;
+  } catch { return null; }
+}
 function token(request: Request) { const value = request.headers.get("authorization"); return value?.startsWith("Bearer ") ? value.slice(7).trim() : null; }
 function read(snapshot: DocumentSnapshot): DeckSlide | null { const slideId = snapshot.get("slideId"), title = snapshot.get("title"), description = snapshot.get("description"), qrCodeId = snapshot.get("qrCodeId") ?? null, qrCodeName = snapshot.get("qrCodeName") ?? null, position = snapshot.get("position"), displayDurationSeconds = snapshot.get("displayDurationSeconds"); return snapshot.exists && snapshot.get("status") === "active" && typeof slideId === "string" && typeof title === "string" && typeof description === "string" && (qrCodeId === null || typeof qrCodeId === "string") && (qrCodeName === null || typeof qrCodeName === "string") && Number.isSafeInteger(position) && (displayDurationSeconds === null || Number.isSafeInteger(displayDurationSeconds)) ? { id: snapshot.id, slideId, title, description, qrCodeId, qrCodeName, position, displayDurationSeconds } : null; }
 

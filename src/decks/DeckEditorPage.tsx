@@ -88,7 +88,14 @@ export default function DeckEditorPage({
 
   useEffect(() => {
     let current = true;
-    void Promise.all([requestDeckSlides(user, workspaceId, deckId), requestSlides(user, workspaceId)]).then(([assigned, available]) => { if (current) { setDeckSlides(assigned); setAvailableSlides(available); } }, () => { if (current) setSlideError("QRousel could not load slides for this deck."); });
+    void requestDeckSlides(user, workspaceId, deckId).then(
+      (assigned) => { if (current) { setDeckSlides(assigned); setSlideError(""); } },
+      (error: unknown) => { if (current) setSlideError(error instanceof Error ? error.message : "QRousel could not load this deck's slides."); },
+    );
+    void requestSlides(user, workspaceId).then(
+      (available) => { if (current) { setAvailableSlides(available); setSlideError(""); } },
+      (error: unknown) => { if (current) setSlideError(error instanceof Error ? error.message : "QRousel could not load your slides."); },
+    );
     return () => { current = false; };
   }, [deckId, user, workspaceId]);
 
