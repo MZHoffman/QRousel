@@ -24,6 +24,16 @@ test("creates reusable icons, QR codes, slides, and a deck, then permanently cle
   await page.getByRole("button", { name: "Create workspace" }).click();
   await expect(page.getByRole("heading", { name: "E2E workspace" })).toBeVisible();
 
+  await page.getByRole("link", { name: "Members" }).click();
+  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Invite members" })).toBeVisible();
+  const invitationResponse = page.waitForResponse((response) => response.url().includes("/api/workspaces/") && response.url().endsWith("/invitations") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Create invite link" }).click();
+  expect((await invitationResponse).status()).toBe(201);
+  await expect(page.getByRole("textbox", { name: "One-use invite link" })).toHaveValue(/invite=/);
+  await expect(page.getByText("A workspace is required.")).not.toBeVisible();
+  await expect(page.getByText("Method not allowed.")).not.toBeVisible();
+
   await page.getByRole("link", { name: "Icons" }).click();
   for (const name of ["E2E icon alpha", "E2E icon beta"]) {
     await page.getByRole("button", { name: "Add icon" }).click();
@@ -61,6 +71,9 @@ test("creates reusable icons, QR codes, slides, and a deck, then permanently cle
   await page.getByRole("combobox").last().selectOption({ label: "E2E Slide alpha" });
   await page.getByRole("button", { name: "Add slide" }).last().click();
   await expect(page.getByRole("heading", { name: "E2E Slide alpha" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "E2E Slide alpha" })).toBeVisible();
+  await expect(page.getByText("QRousel could not load slides for this deck.")).not.toBeVisible();
 
   const cleanup = await page.evaluate(async () => {
     const token = await window.__qrouselE2e?.getToken();

@@ -42,7 +42,7 @@ export async function requestDeckSlides(user: AuthenticatedUser, workspaceId: st
   const response = await fetch(deckSlidesEndpoint(workspaceId, deckId), { headers: await authorizationHeaders(user) });
   const body: unknown = await response.json().catch(() => null);
   if (response.ok && isDeckSlideListResponse(body)) return body.slides;
-  throw new Error("QRousel could not load this deck's slides.");
+  throw new Error(apiError(body, "QRousel could not load this deck's slides."));
 }
 
 export async function addDeckSlide(user: AuthenticatedUser, workspaceId: string, deckId: string, slideId: string): Promise<DeckSlide> {
@@ -74,6 +74,12 @@ async function authorizationHeaders(
   user: AuthenticatedUser,
 ): Promise<HeadersInit> {
   return { authorization: `Bearer ${await user.getIdToken()}` };
+}
+
+function apiError(body: unknown, fallback: string): string {
+  return body && typeof body === "object" && "error" in body && typeof body.error === "string"
+    ? body.error
+    : fallback;
 }
 
 export async function requestDecks(
