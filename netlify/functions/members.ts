@@ -9,13 +9,27 @@ const token = (request: Request) => request.headers.get("authorization")?.replac
 const role = (value: unknown): value is WorkspaceRole => typeof value === "string" && WORKSPACE_ROLES.includes(value as WorkspaceRole);
 const rank: Record<WorkspaceRole, number> = { founder: 4, owner: 3, admin: 2, editor: 1, viewer: 0 };
 const canManage = (actor: WorkspaceRole, target: WorkspaceRole) => rank[actor] > rank[target];
+function route(request: Request): { workspaceId: string; memberUid: string | null } | null {
+  const url = new URL(request.url);
+  const workspaceId = url.searchParams.get("workspaceId")?.trim();
+  const memberUid = url.searchParams.get("memberUid")?.trim() || null;
+  if (workspaceId) return { workspaceId, memberUid };
+  const match = url.pathname.match(/^\/api\/workspaces\/([^/]+)\/members(?:\/([^/]+))?$/);
+  if (!match?.[1]) return null;
+  try {
+    const pathWorkspaceId = decodeURIComponent(match[1]).trim();
+    const pathMemberUid = match[2] ? decodeURIComponent(match[2]).trim() : null;
+    return pathWorkspaceId ? { workspaceId: pathWorkspaceId, memberUid: pathMemberUid || null } : null;
+  } catch { return null; }
+}
 
 export default async function members(request: Request) {
   try {
     const idToken = token(request); if (!idToken) return json({ error: "Authentication required." }, 401);
     const account = await authenticateActiveAccount(idToken); if (!account) return json({ error: "Authentication required." }, 401);
-    const url = new URL(request.url), workspaceId = url.searchParams.get("workspaceId")?.trim(), memberUid = url.searchParams.get("memberUid")?.trim() || null;
-    if (!workspaceId) return json({ error: "A workspace is required." }, 400);
+    const currentRoute = route(request);
+    if (!currentRoute) return json({ error: "A workspace is required." }, 400);
+    const { workspaceId, memberUid } = currentRoute;
     const db = getFirestore(getFirebaseAdminApp()), workspace = db.doc(`workspaces/${workspaceId}`), actorMembership = db.doc(`workspaceMemberships/${workspaceId}_${account.uid}`);
     const [workspaceSnapshot, actorSnapshot] = await db.getAll(workspace, actorMembership); const actorRole = actorSnapshot.get("role");
     if (!workspaceSnapshot.exists || workspaceSnapshot.get("status") !== "active" || !actorSnapshot.exists || actorSnapshot.get("status") !== "active" || !role(actorRole)) return json({ error: "Workspace access denied." }, 403);
