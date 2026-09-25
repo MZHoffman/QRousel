@@ -10,6 +10,26 @@ type Props = { library: ReturnType<typeof useSlideLibrary>; role: WorkspaceRole;
 export default function SlideLibraryPage({ library, role, onCreatePage, onEditPage, user, workspaceId }: Props) {
   const [query, setQuery] = useState("");
   const canEdit = role !== "viewer";
-  const slides = useMemo(() => { const term = query.trim().toLowerCase(); return term ? library.slides.filter((slide) => `${slide.title} ${slide.description}`.toLowerCase().includes(term)) : library.slides; }, [library.slides, query]);
-  return <><header className="workspace-page-heading deck-library-heading"><div><p className="workspace-kicker">Reusable content</p><h1>Slides</h1><p>Create slides once and use them across every deck.</p></div>{canEdit && <button type="button" onClick={onCreatePage}>New slide <span aria-hidden="true">→</span></button>}</header><div className="deck-library-toolbar"><label><span className="visually-hidden">Search slides</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search slides" /></label><span>{library.state.kind === "ready" ? library.slides.length : "—"} / {SLIDE_LIMIT} slides</span></div>{library.state.kind === "loading" && <section className="deck-library-status"><span className="auth-spinner" aria-hidden="true" /><p>Loading slides…</p></section>}{library.state.kind === "error" && <section className="deck-library-status"><h2>We could not load your slides</h2><p>{library.state.message}</p><button type="button" onClick={library.retry}>Try again</button></section>}{library.state.kind === "ready" && library.slides.length === 0 && <section className="workspace-library-empty"><span className="workspace-empty-mark deck-empty-mark" aria-hidden="true">0</span><h2>No slides yet</h2><p>Create a reusable slide, then add it to any deck later.</p>{canEdit && <button className="deck-empty-action" type="button" onClick={onCreatePage}>Create your first slide</button>}</section>}{library.state.kind === "ready" && library.slides.length > 0 && (slides.length === 0 ? <section className="deck-library-status"><h2>No matching slides</h2><p>Try a different search.</p></section> : <section className="slide-card-grid" aria-label="Reusable slides">{slides.map((slide) => <article className="slide-card" key={slide.id}><span className="deck-status">reusable slide</span><h2>{slide.title}</h2><p>{slide.description || "No description yet."}</p>{canEdit && <><button type="button" onClick={() => onEditPage(slide.id)}>Edit slide</button><button className="workspace-text-button" type="button" onClick={() => { if (window.confirm(`Archive “${slide.title}”?`)) void archiveResource(user, workspaceId, "slides", slide.id).then(() => library.retry()); }}>Archive</button></>}</article>)}</section>)}</>;
+  const slides = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return term ? library.slides.filter((slide) => `${slide.title} ${slide.description}`.toLowerCase().includes(term)) : library.slides;
+  }, [library.slides, query]);
+
+  return <>
+    <header className="workspace-page-heading deck-library-heading"><div><p className="workspace-kicker">Reusable content</p><h1>Slides</h1><p>Create slides once and use them across every deck.</p></div>{canEdit && <button type="button" onClick={onCreatePage}>New slide <span aria-hidden="true">→</span></button>}</header>
+    <div className="deck-library-toolbar"><label><span className="visually-hidden">Search slides</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search slides" /></label><span>{library.state.kind === "ready" ? library.slides.length : "—"} / {SLIDE_LIMIT} slides</span></div>
+    {library.state.kind === "loading" && <section className="deck-library-status"><span className="auth-spinner" aria-hidden="true" /><p>Loading slides…</p></section>}
+    {library.state.kind === "error" && <section className="deck-library-status"><h2>We could not load your slides</h2><p>{library.state.message}</p><button type="button" onClick={library.retry}>Try again</button></section>}
+    {library.state.kind === "ready" && library.slides.length === 0 && <section className="workspace-library-empty"><span className="workspace-empty-mark deck-empty-mark" aria-hidden="true">0</span><h2>No slides yet</h2><p>Create a reusable slide, then add it to any deck later.</p>{canEdit && <button className="deck-empty-action" type="button" onClick={onCreatePage}>Create your first slide</button>}</section>}
+    {library.state.kind === "ready" && library.slides.length > 0 && (slides.length === 0 ? <section className="deck-library-status"><h2>No matching slides</h2><p>Try a different search.</p></section> : <section className="slide-card-grid" aria-label="Reusable slides">{slides.map((slide) => {
+      const description = slide.description.trim();
+      const repeatsTitle = description.toLocaleLowerCase() === slide.title.trim().toLocaleLowerCase();
+      return <article className="slide-card" key={slide.id}>
+        <span className="deck-status">reusable slide</span>
+        <h2>{slide.title}</h2>
+        {!repeatsTitle && <p>{description || "No description yet."}</p>}
+        {canEdit && <div className="slide-card-actions"><button type="button" onClick={() => onEditPage(slide.id)}>Edit slide</button><button className="workspace-text-button" type="button" onClick={() => { if (window.confirm(`Move “${slide.title}” to Trash? You can restore it from Trash for 90 days.`)) void archiveResource(user, workspaceId, "slides", slide.id).then(() => library.retry()); }}>Move to trash</button></div>}
+      </article>;
+    })}</section>)}
+  </>;
 }
