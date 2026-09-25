@@ -48,11 +48,6 @@ export default function DeckLibraryPage({
           <h1>Decks</h1>
           <p>Build, publish, and present collections of reusable slides.</p>
         </div>
-        {canEdit && (
-          <button type="button" onClick={onCreationOpen}>
-            New deck <span aria-hidden="true">→</span>
-          </button>
-        )}
       </header>
 
       <div className="deck-library-toolbar">
@@ -124,7 +119,6 @@ export default function DeckLibraryPage({
                     <small>{deck.slideCount === 1 ? "slide" : "slides"}</small>
                   </div>
                   <div className="deck-card-copy">
-                    <span className="deck-status">{deck.publicationStatus}</span>
                     <h2>{deck.name}</h2>
                     <p>
                       {deck.defaultDisplayDurationSeconds}s default timing
@@ -132,6 +126,7 @@ export default function DeckLibraryPage({
                   </div>
                 </button>
               ))}
+              {canEdit && <button className="deck-library-add" type="button" onClick={onCreationOpen}><span aria-hidden="true">+</span><strong>Add deck</strong><small>Create a presentation</small></button>}
             </section>
           )}
         </>

@@ -1156,6 +1156,44 @@ button {
   font-size: 10px;
 }
 
+.deck-library-add {
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 20px;
+  border: 2px dashed rgba(30, 107, 75, .36);
+  border-radius: 16px;
+  background: rgba(217, 245, 119, .1);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  transition: .16s ease;
+}
+
+.deck-library-add:hover {
+  border-color: var(--green);
+  background: rgba(217, 245, 119, .25);
+  transform: translateY(-2px);
+}
+
+.deck-library-add > span {
+  display: grid;
+  width: 50px;
+  height: 50px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+  font-size: 31px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.deck-library-add strong { font-size: 12px; }
+.deck-library-add small { color: var(--muted); font-size: 9px; }
+
 .slide-card-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
