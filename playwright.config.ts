@@ -8,14 +8,14 @@ export default defineConfig({
   retries: 0,
   use: { baseURL: "http://127.0.0.1:8888", screenshot: "only-on-failure" },
   webServer: {
-  command: "npx netlify-cli dev --offline --port 8888 --command 'npx vite --host 127.0.0.1 --port 5173'",
+    command: "npx netlify-cli dev --offline --framework vite --port 8888 --target-port 5189 --command 'npx vite --host 127.0.0.1 --port 5189 --strictPort'",
     url: "http://127.0.0.1:8888",
     timeout: 120_000,
     reuseExistingServer: false,
     env: {
       GCLOUD_PROJECT: "qrousel-e2e",
       FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099",
-      FIRESTORE_EMULATOR_HOST: "127.0.0.1:8080",
+      FIRESTORE_EMULATOR_HOST: "127.0.0.1:8180",
       QROUSEL_E2E: "true",
       VITE_QROUSEL_E2E: "true",
       VITE_FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099",
