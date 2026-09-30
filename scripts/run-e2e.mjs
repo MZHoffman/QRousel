@@ -16,7 +16,7 @@ if (process.platform === "darwin") {
   }
 }
 
-const emulator = spawn(command, ["firebase-tools", "emulators:exec", "--project", "qrousel-e2e", "--only", "auth,firestore", "npx playwright test"], {
+const emulator = spawn(command, ["firebase-tools", "emulators:exec", "--config", "firebase.e2e.json", "--project", "qrousel-e2e", "--only", "auth,firestore", "npx playwright test"], {
   cwd: process.cwd(),
   env: environment,
   stdio: "inherit",
