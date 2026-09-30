@@ -3,6 +3,10 @@ import type { User } from "firebase/auth";
 import type { DeckSummary } from "../../lib/decks/api-response";
 import type { DeckSlide } from "../../lib/decks/slide-assignment";
 import type { WorkspaceRole } from "../../lib/workspaces/api-response";
+import type { QrCodeSummary } from "../../lib/qr-codes/api-response";
+import type { IconSummary } from "../../lib/icons/api-response";
+import QrCodeCanvas from "../qr-codes/QrCodeCanvas";
+import { qrPayload } from "../qr-codes/scan-url";
 import {
   requestDeck,
   requestDeckDuplication,
@@ -31,6 +35,9 @@ type DeckEditorPageProps = {
   onDuplicated: (deck: DeckSummary) => void;
   onUpdated: (deck: DeckSummary) => void;
   onOpenSlideLibrary: () => void;
+  onEditSlide: (slideId: string) => void;
+  qrCodes: QrCodeSummary[];
+  icons: IconSummary[];
 };
 
 export default function DeckEditorPage({
@@ -42,6 +49,9 @@ export default function DeckEditorPage({
   onDuplicated,
   onUpdated,
   onOpenSlideLibrary,
+  onEditSlide,
+  qrCodes,
+  icons,
 }: DeckEditorPageProps) {
   const [state, setState] = useState<EditorState>({ kind: "loading" });
   const [name, setName] = useState("");
@@ -339,7 +349,74 @@ export default function DeckEditorPage({
             <p className="workspace-kicker">Deck content</p>
             <h2>Slides</h2>
           </div>
-          {deckSlides.length === 0 ? <div className="deck-editor-empty"><span aria-hidden="true">0</span><h3>No slides in this deck</h3><p>Add reusable slides to start building the presentation.</p></div> : <div className="deck-slide-grid">{deckSlides.map((slide) => <article className="deck-slide-tile" key={slide.id} draggable={canEdit && !isUpdatingSlides} onDragStart={() => setDraggedSlideId(slide.id)} onDragOver={(event) => { if (canEdit) event.preventDefault(); }} onDrop={() => { if (draggedSlideId) void moveSlide(draggedSlideId, slide.id); }}><span className="deck-status">slide {slide.position + 1}</span><h3>{slide.title}</h3><p>{slide.description || "No description"}</p><small>{slide.qrCodeName ? `QR: ${slide.qrCodeName}` : "No QR code selected"}</small><label>Timing override<input type="number" min="1" value={slide.displayDurationSeconds ?? ""} placeholder={`${state.deck.defaultDisplayDurationSeconds}s default`} onChange={(event) => void saveTiming(slide, event.target.value)} disabled={!canEdit || isUpdatingSlides} /></label>{canEdit && <div className="deck-slide-actions"><button type="button" className="workspace-text-button" disabled={isUpdatingSlides} onClick={() => void removeSlide(slide)}>Remove</button><small>Drag to reorder</small></div>}</article>)}</div>}
+          {deckSlides.length === 0 ? (
+            <div className="deck-editor-empty"><span aria-hidden="true">0</span><h3>No slides in this deck</h3><p>Add reusable slides to start building the presentation.</p></div>
+          ) : (
+            <div className="deck-slide-grid">
+              {deckSlides.map((slide, index) => {
+                const code = qrCodes.find((item) => item.id === slide.qrCodeId);
+                const icon = icons.find((item) => item.id === code?.iconId);
+                return (
+                  <article
+                    className={`deck-slide-tile${draggedSlideId === slide.id ? " is-dragging" : ""}`}
+                    key={slide.id}
+                    onDragOver={(event) => { if (canEdit && draggedSlideId) event.preventDefault(); }}
+                    onDrop={(event) => { event.preventDefault(); if (draggedSlideId) void moveSlide(draggedSlideId, slide.id); }}
+                  >
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="deck-slide-handle"
+                        draggable={!isUpdatingSlides}
+                        aria-label={`Reorder slide ${index + 1}`}
+                        title="Drag to reorder, or use arrow keys"
+                        disabled={isUpdatingSlides}
+                        onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; setDraggedSlideId(slide.id); }}
+                        onDragEnd={() => setDraggedSlideId(null)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+                          event.preventDefault();
+                          const next = index + (event.key === "ArrowUp" ? -1 : 1);
+                          if (deckSlides[next]) void moveSlide(slide.id, deckSlides[next].id);
+                        }}
+                      >
+                        <span aria-hidden="true" /><span aria-hidden="true" />
+                      </button>
+                    )}
+                    <div className="deck-slide-body">
+                      <div className="deck-slide-preview">
+                        <div className="deck-slide-preview-qr">
+                          {code ? <QrCodeCanvas content={qrPayload(code)} color={code.color} version={code.version} logoScale={code.logoScale} iconImage={icon?.imageDataUrl} /> : <div className="deck-slide-preview-blank" aria-hidden="true" />}
+                        </div>
+                        <div className="deck-slide-preview-copy">
+                          <h3>{slide.title}</h3>
+                          {slide.description && <p>{slide.description}</p>}
+                        </div>
+                        {canEdit && (
+                          <div className="deck-slide-preview-actions">
+                            <button type="button" aria-label={`Edit ${slide.title}`} title="Edit slide" onClick={() => onEditSlide(slide.slideId)}>
+                              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m16 4 4 4M4 20l4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11L4 20Z" /></svg>
+                            </button>
+                            <button type="button" aria-label={`Remove ${slide.title} from deck`} title="Remove from deck" disabled={isUpdatingSlides} onClick={() => void removeSlide(slide)}>
+                              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v6m4-6v6" /></svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="deck-slide-timing">
+                        <label htmlFor={`duration-${slide.id}`}>Timing override</label>
+                        <div className="deck-slide-timing-input">
+                          <input id={`duration-${slide.id}`} type="number" min="1" step="1" inputMode="numeric" value={slide.displayDurationSeconds ?? ""} placeholder={String(state.deck.defaultDisplayDurationSeconds)} onChange={(event) => void saveTiming(slide, event.target.value)} disabled={!canEdit || isUpdatingSlides} />
+                          <span>seconds</span>
+                        </div>
+                        <small>{slide.displayDurationSeconds === null ? "Deck default" : "Custom timing"}</small>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
           {canEdit && <div className="deck-slide-picker"><div><strong>Add a reusable slide</strong><span>Choose one already in this workspace, or create a new one.</span></div><select value={selectedSlideId} onChange={(event) => setSelectedSlideId(event.target.value)}><option value="">Choose a slide</option>{availableSlides.map((slide) => <option key={slide.id} value={slide.id}>{slide.title}</option>)}</select><button type="button" disabled={!selectedSlideId || isUpdatingSlides} onClick={() => void addSelectedSlide()}>Add slide</button><button className="workspace-text-button" type="button" onClick={onOpenSlideLibrary}>Open slides library</button></div>}
           {slideError && <p className="auth-error">{slideError}</p>}
         </section>
