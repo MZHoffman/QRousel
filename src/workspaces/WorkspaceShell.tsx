@@ -219,6 +219,13 @@ function WorkspacePage({
           }}
           onUpdated={deckLibrary.acceptUpdatedDeck}
           onOpenSlideLibrary={() => navigate("slides")}
+          onEditSlide={(slideId) => {
+            const path = workspaceResourceEditorPath(workspace.id, "slides", "edit", slideId);
+            window.history.pushState({}, "", `${path}?fromDeck=${encodeURIComponent(selectedDeckId)}`);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          }}
+          qrCodes={qrCodeLibrary.codes}
+          icons={iconLibrary.icons}
         />
       );
     }
@@ -252,7 +259,11 @@ function WorkspacePage({
     }
     if (editor?.mode === "edit") {
       const slide = slideLibrary.slides.find((item) => item.id === editor.resourceId);
-      if (slide) return <SlideEditPage library={slideLibrary} role={workspace.role} slide={slide} qrCodes={qrCodeLibrary.codes} onBack={() => navigate("slides")} />;
+      if (slide) return <SlideEditPage library={slideLibrary} role={workspace.role} slide={slide} qrCodes={qrCodeLibrary.codes} backLabel={new URLSearchParams(window.location.search).has("fromDeck") ? "Deck" : "Slides"} onBack={() => {
+        const fromDeck = new URLSearchParams(window.location.search).get("fromDeck");
+        if (fromDeck) onOpenDeck(fromDeck);
+        else navigate("slides");
+      }} />;
     }
     return (
       <SlideLibraryPage
