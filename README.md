@@ -50,13 +50,11 @@ notifications for a later notification-delivery feature.
 ## Checks
 
 ```bash
-npm run lint
-npm run test
+npm run verify
 ```
 
-`npm run test` checks TypeScript (including Netlify Functions), creates the
-production Vite build, runs the unit tests, and checks the generated application
-document. GitHub Actions runs the same lint and test commands for pull requests
-to `main`, pushes to `main`, and manual runs.
+Run `npm run verify` after changes. It runs lint, type checking, the production build, unit/rendered-document tests, and browser journeys against local Firebase emulators. Install Playwright Chromium with `npx playwright install chromium` and Java 21+ before the first browser run.
+
+CI runs the same command for pull requests and pushes to both `main` and `production`, and saves browser failure evidence. The project verification and release requirements are in [AGENTS.md](AGENTS.md).
 
 To serve an existing production build locally, run `npm run start`.

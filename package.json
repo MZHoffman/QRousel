@@ -6,6 +6,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "verify": "npm run lint && npm run test && npm run test:e2e",
     "dev": "node local-app.mjs dev",
     "build": "vite build",
     "start": "node local-app.mjs start",
